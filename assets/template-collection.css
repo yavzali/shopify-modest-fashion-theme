@@ -1,3 +1,77 @@
+/* UPDATED: 2025-01-11 17:56 - Phase 1.6 Title Clipping & Padding - CLEAN IMPLEMENTATION */
+
+/* PHASE 1.6 - Title Clipping & Padding - AGGRESSIVE WIDTH CONSTRAINTS */
+
+/* Force the entire card structure to have constrained widths */
+.product-grid .grid__item {
+  min-width: 0 !important; /* Allow flex items to shrink below content size */
+  max-width: 100% !important; /* Prevent expansion beyond grid bounds */
+}
+
+.product-grid .grid__item .card-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.product-grid .grid__item .card {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Target the actual HTML structure: h3.card__heading and its link */
+.card__heading,
+.card__heading.h5 {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  margin-bottom: 0.5rem !important;
+  min-width: 0 !important; /* Critical for ellipsis to work */
+}
+
+.card__heading a,
+.card__heading a.full-unstyled-link {
+  /* Essential ellipsis properties */
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  
+  /* Ensure proper display and width */
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important; /* Critical for ellipsis to work */
+  
+  /* Maintain styling */
+  line-height: 1.3 !important;
+  margin: 0 !important;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+/* Ensure the card information container doesn't expand beyond bounds */
+.card__information {
+  padding: 1rem 0.8rem 0.5rem 0.8rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important; /* Critical for ellipsis to work */
+  overflow: hidden !important;
+}
+
+@media screen and (max-width: 749px) {
+  .card__information {
+    padding: 0.8rem 0.6rem 0.4rem 0.6rem !important;
+  }
+}
+
+.card__information .price {
+  margin-top: 0.3rem !important;
+  margin-bottom: 0 !important;
+}
+
 @media screen and (max-width: 749px) {
   .collection .grid__item:only-child {
     flex: 0 0 100%;
@@ -97,3 +171,134 @@
 .collection__view-all a:not(.link) {
   margin-top: 1rem;
 }
+
+/* PHASE 1.5 STYLING ENHANCEMENTS */
+
+/* 1. TYPOGRAPHY CHANGES - Make price font match title font */
+.card__information .price {
+  font-family: var(--font-heading-family);
+  font-style: var(--font-heading-style);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: calc(var(--font-heading-scale) * 0.06rem);
+  line-height: calc(1 + 0.3 / var(--font-heading-scale));
+  font-size: calc(var(--font-heading-scale) * 1.4rem);
+}
+
+/* 2. SALE PRICE LAYOUT CHANGES - Apply sale price color and spacing */
+.card__information .price--on-sale .price__sale {
+  display: flex !important;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: nowrap !important;
+}
+
+/* Sale price (current price) - Custom color */
+.card__information .price--on-sale .price__sale .price-item--sale {
+  color: #eb4662 !important;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Original price (struck through) - Maintain styling */
+.card__information .price--on-sale .price__sale .price-item--regular {
+  text-decoration: line-through !important;
+  color: rgba(var(--color-foreground), 0.75) !important;
+  font-size: calc(var(--font-heading-scale) * 1.2rem) !important;
+  margin: 0;
+}
+
+/* Ensure regular prices (non-sale) maintain consistent styling */
+.card__information .price__regular .price-item--regular {
+  font-family: var(--font-heading-family);
+  font-style: var(--font-heading-style);
+  font-weight: var(--font-heading-weight);
+  font-size: calc(var(--font-heading-scale) * 1.4rem);
+}
+
+/* Mobile responsiveness for price styling */
+@media screen and (max-width: 749px) {
+  .card__information .price {
+    font-size: calc(var(--font-heading-scale) * 1.3rem);
+  }
+  
+  .card__information .price--on-sale .price__sale .price-item--regular {
+    font-size: calc(var(--font-heading-scale) * 1.1rem) !important;
+  }
+}
+
+/* PHASE 1.7 - IMAGE BORDER STANDARDIZATION */
+
+/* Add subtle light grey borders around all product images for visual consistency */
+.card__media img,
+.card__media .media img {
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 0 !important; /* Maintain sharp corners to match existing design */
+}
+
+/* Ensure the border doesn't affect image sizing or layout */
+.card__media,
+.card__media .media {
+  box-sizing: border-box !important;
+}
+
+/* Handle hover state images as well */
+.card__media .media--hover img {
+  border: 1px solid #e5e5e5 !important;
+}
+
+/* Ensure consistent border on both primary and secondary images */
+.card__media .media:first-child img,
+.card__media .media:last-child img {
+  border: 1px solid #e5e5e5 !important;
+}
+
+/* Mobile responsiveness - maintain borders on all screen sizes */
+@media screen and (max-width: 749px) {
+  .card__media img,
+  .card__media .media img {
+    border: 1px solid #e5e5e5 !important;
+  }
+}
+
+/* PHASE 1.8 - REMOVE COLLECTION HEADING SECTION */
+
+/* Hide the "Collection: Products" heading completely */
+.collection__title,
+.collection__title.title-wrapper,
+.title-wrapper .title,
+main .title-wrapper,
+main h1.title {
+  display: none !important;
+}
+
+/* Also target any collection heading that might have different classes */
+.collection-hero__title,
+.collection-hero .title,
+.page-title,
+.collection .page-title {
+  display: none !important;
+}
+
+/* Ensure no extra spacing remains where the heading was */
+.collection__title + *,
+.title-wrapper + * {
+  margin-top: 0 !important;
+}
+
+/* Adjust main content spacing to prevent gaps */
+main > *:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Mobile specific adjustments */
+@media screen and (max-width: 749px) {
+  .collection__title,
+  .title-wrapper {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+/* END OF FILE - Duplicate rules removed */
