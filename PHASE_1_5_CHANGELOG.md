@@ -1,10 +1,11 @@
-# PHASE 1.5, 1.6, 1.7 & 1.8 CHANGELOG & LESSONS LEARNED
+# PHASE 1.5, 1.6, 1.7, 1.8 & 1.9 CHANGELOG & LESSONS LEARNED
 
 ## Overview
 Phase 1.5 focused on enhancing the product grid styling while maintaining all standardization achieved in Phase 1.
 Phase 1.6 focused on implementing title clipping and padding improvements.
 Phase 1.7 focused on adding subtle borders around product images for better visual consistency.
-Phase 1.8 focuses on removing the "Collection: Products" heading section to reduce clutter and improve layout.
+Phase 1.8 focused on removing the "Collection: Products" heading section to reduce clutter and improve layout.
+Phase 1.9 explored object-fit: contain image optimization to show more clothing details (tested but not implemented).
 
 ## Phase 1.5 Changes Made ✅ COMPLETED
 
@@ -125,6 +126,113 @@ Phase 1.8 focuses on removing the "Collection: Products" heading section to redu
 - After: Page flows directly from navigation to filters/products with no redundant heading
 - Cleaner, more focused user experience with better space utilization
 
+## Phase 1.9 Exploration ✅ TESTED (Not Currently Implemented)
+
+### Goal: Image Optimization with Object-Fit: Contain
+**Problem**: Current images are cropped (object-fit: cover) which cuts off clothing details
+- Full-length dresses get cropped, losing important visual information
+- Some clothing details are cut off at edges
+- Users can't see complete garments in grid view
+
+**Solution Tested**: Use `object-fit: contain` to show full images within containers
+- Shows complete clothing items within portrait containers
+- Adds white background fill for images that don't match portrait ratio
+- Maintains grid standardization while maximizing image content visibility
+
+**Test Results**: ✅ Successfully implemented and tested
+- **Pros**: Shows complete garments, especially beneficial for full-length dresses
+- **Cons**: Creates white space around non-portrait images, mixed visual density
+- **User Decision**: Tested successfully but keeping current approach for now
+
+### Implementation Details for Future Use
+
+**CURRENT STATE (Phase 1.7 + 1.8)**: 
+- Images use default `object-fit: cover` (cropped to fill containers)
+- Subtle grey borders (`#e5e5e5`) around all images
+- Collection heading removed
+
+**TO SWITCH TO PHASE 1.9 (Object-Fit: Contain)**:
+
+1. **Enable Object-Fit: Contain** - In `assets/template-collection.css`, find the section:
+```css
+/* EXPERIMENTAL: OBJECT-FIT CONTAIN IMAGE OPTIMIZATION */
+/* TEMPORARILY DISABLED - Restoring previous formatting for comparison */
+```
+
+Replace the commented code with:
+```css
+/* PHASE 1.9 - OBJECT-FIT CONTAIN IMAGE OPTIMIZATION - ACTIVE */
+/* Show full image within portrait container using object-fit: contain */
+.card__media img,
+.card__media .media img {
+  object-fit: contain !important;
+  background-color: white !important;
+}
+
+/* Ensure hover images also use contain */
+.card__media .media--hover img {
+  object-fit: contain !important;
+  background-color: white !important;
+}
+
+/* Maintain container dimensions to preserve grid standardization */
+.card__media,
+.card__media .media {
+  background-color: white !important;
+}
+```
+
+2. **Optional: Remove Borders** - If desired, comment out the Phase 1.7 border section:
+```css
+/* PHASE 1.7 - IMAGE BORDER STANDARDIZATION */
+/* TEMPORARILY DISABLED - Testing object-fit: contain without borders */
+/*
+.card__media img,
+.card__media .media img {
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 0 !important;
+}
+*/
+```
+
+**TO REVERT FROM PHASE 1.9 BACK TO CURRENT**:
+
+1. **Disable Object-Fit: Contain** - Comment out the object-fit section:
+```css
+/* EXPERIMENTAL: OBJECT-FIT CONTAIN IMAGE OPTIMIZATION */
+/* TEMPORARILY DISABLED - Restoring previous formatting for comparison */
+/*
+.card__media img,
+.card__media .media img {
+  object-fit: contain !important;
+  background-color: white !important;
+}
+*/
+```
+
+2. **Restore Borders** - Uncomment the Phase 1.7 border section:
+```css
+/* PHASE 1.7 - IMAGE BORDER STANDARDIZATION */
+/* Add subtle light grey borders around all product images for visual consistency */
+.card__media img,
+.card__media .media img {
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 0 !important;
+}
+```
+
+### Visual Comparison Notes
+- **With Object-Fit: Contain**: Full garments visible, white backgrounds, cleaner look without borders
+- **Without Object-Fit: Contain**: Cropped images, consistent visual density, borders provide definition
+- **Both approaches maintain**: Grid standardization, hover effects, mobile responsiveness
+
+### Files Modified for Phase 1.9 Testing
+1. `assets/template-collection.css` - Object-fit contain implementation (currently disabled)
+
+**Testing Environment**: Successfully tested on http://127.0.0.1:9292/collections/all
+**Screenshots Taken**: Desktop and mobile views for both approaches
+**Status**: Code ready for future implementation, currently using Phase 1.7 + 1.8 approach
+
 ## Files Modified
 
 ### Phase 1.5
@@ -139,6 +247,9 @@ Phase 1.8 focuses on removing the "Collection: Products" heading section to redu
 
 ### Phase 1.8
 1. `assets/template-collection.css` - Collection heading removal
+
+### Phase 1.9
+1. `assets/template-collection.css` - Object-fit contain implementation (currently disabled)
 
 ## Lessons Learned
 
@@ -175,6 +286,7 @@ Phase 1.8 focuses on removing the "Collection: Products" heading section to redu
 - ✅ **Phase 1.6 Complete**: Title clipping with ellipsis and padding improvements
 - ✅ **Phase 1.7 Complete**: Image border standardization for visual consistency
 - ✅ **Phase 1.8 Complete**: Collection heading removal for cleaner layout
+- ✅ **Phase 1.9 Explored**: Object-fit contain optimization tested (code ready for future use)
 
 ## Next Steps for Title Clipping
 1. Investigate actual HTML structure in browser developer tools
@@ -196,6 +308,7 @@ Phase 1.8 focuses on removing the "Collection: Products" heading section to redu
 - **Added**: Product title clipping with ellipsis
 - **Added**: Card information padding improvements
 - **Added**: Image border standardization
+- **Added**: Object-fit contain implementation (currently disabled)
 
 ### `templates/collection.json`
 - **Maintained**: `"image_ratio": "portrait"` for standardization
@@ -242,6 +355,7 @@ Phase 1.8 focuses on removing the "Collection: Products" heading section to redu
 ✅ **Improved Spacing**: Better padding and visual breathing room  
 ✅ **Image Border**: Consistent product image borders for visual uniformity
 ✅ **Clean Layout**: Collection heading removed for streamlined appearance
+✅ **Future-Ready**: Object-fit contain implementation tested and documented
 
 ## Quality Assurance
 

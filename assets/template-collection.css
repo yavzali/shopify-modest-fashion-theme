@@ -227,6 +227,7 @@
 }
 
 /* PHASE 1.7 - IMAGE BORDER STANDARDIZATION */
+/* RESTORED - Bringing back borders for comparison */
 
 /* Add subtle light grey borders around all product images for visual consistency */
 .card__media img,
@@ -300,5 +301,45 @@ main > *:first-child {
     padding: 0 !important;
   }
 }
+
+/* Mobile responsiveness - maintain heading removal on all screen sizes */
+@media screen and (max-width: 749px) {
+  .collection__title,
+  .collection__title.title-wrapper,
+  .title-wrapper .title,
+  main .title-wrapper,
+  main h1.title {
+    display: none !important;
+  }
+}
+
+/* EXPERIMENTAL: OBJECT-FIT CONTAIN IMAGE OPTIMIZATION */
+/* TEMPORARILY DISABLED - Restoring previous formatting for comparison */
+/* Date: 2025-01-11 18:19 - Testing object-fit: contain for better image display */
+/* REVERT INSTRUCTIONS: Remove this entire section if not satisfactory */
+/* PHASE 1.9 CANDIDATE: Uncomment below to re-enable object-fit: contain */
+
+/*
+Show full image within portrait container using object-fit: contain
+.card__media img,
+.card__media .media img {
+  object-fit: contain !important;
+  background-color: white !important;
+}
+
+Ensure hover images also use contain
+.card__media .media--hover img {
+  object-fit: contain !important;
+  background-color: white !important;
+}
+
+Maintain container dimensions to preserve grid standardization
+.card__media,
+.card__media .media {
+  background-color: white !important;
+}
+*/
+
+/* END EXPERIMENTAL SECTION - OBJECT-FIT: CONTAIN DISABLED */
 
 /* END OF FILE - Duplicate rules removed */
