@@ -48,11 +48,7 @@
               class="facets__wrapper"
             {% endif %}
           >
-            {%- if filter_type == 'horizontal' and results.filters != empty -%}
-              <h2 class="facets__heading caption-large text-body" id="verticalTitle" tabindex="-1">
-                {{ 'products.facets.filter_by_label' | t }}
-              </h2>
-            {%- endif -%}
+            {% comment %} REMOVED: Filter heading to clean up UI since we only have custom filters {% endcomment %}
             {% comment %} Pills are right below the title for filter type vertical {% endcomment %}
             {%- if filter_type == 'vertical' -%}
               <div class="active-facets active-facets-desktop">
@@ -108,7 +104,8 @@
             {%- endif -%}
 
             <script src="{{ 'show-more.js' | asset_url }}" defer="defer"></script>
-            {% comment %} Filters for both horizontal and vertical filter {% endcomment %}
+            {% comment %} HIDDEN: Native filters - we're replacing with custom Ajax filters {% endcomment %}
+            <div style="display: none;">
             {%- for filter in results.filters -%}
               {% liquid
                 assign total_active_values = total_active_values | plus: filter.active_values.size
@@ -334,6 +331,262 @@
                   </details>
               {% endcase %}
             {%- endfor -%}
+            </div>
+            
+            {% comment %} Custom Ajax Retailer Filter - Inline for instant loading {% endcomment %}
+            {%- if filter_type == 'horizontal' -%}
+              <details
+                id="Details-retailer-filter"
+                class="disclosure-has-popup facets__disclosure js-filter"
+                data-index="retailer"
+              >
+                <summary
+                  class="facets__summary caption-large focus-offset text-body"
+                  aria-label="Retailer (0 filter selected)"
+                >
+                  <div>
+                    <span class="facets__summary-label">
+                      Retailer
+                      <span class="facets__selected hidden">(0)</span>
+                    </span>
+                    {{- 'icon-caret.svg' | inline_asset_content -}}
+                  </div>
+                </summary>
+                <div
+                  id="Facet-retailer-filter"
+                  class="parent-display facets__display"
+                >
+                  <div class="facets__header">
+                    <div>
+                      <span class="facets__selected">Retailer</span>
+                    </div>
+                    <facet-remove>
+                      <a href="/collections/all" class="facets__reset link underlined-link">
+                        Reset
+                      </a>
+                    </facet-remove>
+                  </div>
+                  <fieldset class="facets-wrap parent-wrap">
+                    <legend class="visually-hidden">Retailer</legend>
+                    <ul
+                      class="facets-layout facets-layout-list facets-layout-list--text facets__list list-unstyled"
+                      role="list"
+                    >
+                      <!-- Abercrombie & Fitch -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-1" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="abercrombie"
+                            id="Filter-retailer-1"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">Abercrombie & Fitch</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            Abercrombie & Fitch (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- Anthropologie -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-2" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="anthropologie"
+                            id="Filter-retailer-2"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">Anthropologie</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            Anthropologie (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- Aritzia -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-3" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="aritzia"
+                            id="Filter-retailer-3"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">Aritzia</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            Aritzia (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- ASOS -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-4" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="asos"
+                            id="Filter-retailer-4"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">ASOS</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            ASOS (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- H&M -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-5" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="hm"
+                            id="Filter-retailer-5"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">H&M</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            H&M (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- Mango -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-6" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="mango"
+                            id="Filter-retailer-6"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">Mango</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            Mango (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- Nordstrom -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-7" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="nordstrom"
+                            id="Filter-retailer-7"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">Nordstrom</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            Nordstrom (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- Revolve -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-8" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="revolve"
+                            id="Filter-retailer-8"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">Revolve</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            Revolve (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- Uniqlo -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-9" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="uniqlo"
+                            id="Filter-retailer-9"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">Uniqlo</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            Uniqlo (0 products)
+                          </span>
+                        </label>
+                      </li>
+                      <!-- Urban Outfitters -->
+                      <li class="list-menu__item facets__item">
+                        <label for="Filter-retailer-10" class="facets__label facet-checkbox">
+                          <input
+                            type="checkbox"
+                            name="filter.p.tag"
+                            value="urban_outfitters"
+                            id="Filter-retailer-10"
+                          >
+                          {{- 'square.svg' | inline_asset_content -}}
+                          <div class="svg-wrapper">
+                            {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                          </div>
+                          <span class="facet-checkbox__text" aria-hidden="true">
+                            <span class="facet-checkbox__text-label">Urban Outfitters</span> (0)
+                          </span>
+                          <span class="visually-hidden">
+                            Urban Outfitters (0 products)
+                          </span>
+                        </label>
+                      </li>
+                    </ul>
+                  </fieldset>
+                </div>
+              </details>
+            {%- endif -%}
           </div>
           {% comment %} Pills after filtes on filter type horizontal {% endcomment %}
           {%- if filter_type == 'horizontal' -%}
@@ -388,7 +641,7 @@
           {%- if enable_sorting -%}
             <div class="facet-filters sorting caption">
               <div class="facet-filters__field">
-                <h2 class="facet-filters__label caption-large text-body">
+                <h2 class="facet-filters__label caption text-body">
                   <label for="SortBy">{{ 'products.facets.sort_by_label' | t }}</label>
                 </h2>
                 <div class="select">
@@ -828,7 +1081,7 @@
       <form id="FacetSortDrawerForm" class="facets__form">
         <div class="facet-filters sorting caption small-hide">
           <div class="facet-filters__field">
-            <h2 class="facet-filters__label caption-large text-body">
+            <h2 class="facet-filters__label caption text-body">
               <label for="SortBy">{{ 'products.facets.sort_by_label' | t }}</label>
             </h2>
             <div class="select">
