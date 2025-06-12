@@ -760,6 +760,8 @@
               id="FacetsWrapperMobile"
               class="mobile-facets__main has-submenu gradient"
             >
+              {% comment %} HIDDEN: Mobile native filters - we're replacing with custom Ajax filters {% endcomment %}
+              <div style="display: none;">
               {%- if enable_filtering -%}
                 {%- for filter in results.filters -%}
                   {% liquid
@@ -968,6 +970,227 @@
                   {% endcase %}
                 {%- endfor -%}
               {%- endif -%}
+              </div>
+
+              {% comment %} Custom Mobile Ajax Retailer Filter - TODO: Add mobile version {% endcomment %}
+              {% comment %} For now, mobile will use the existing sort dropdown only {% endcomment %}
+
+              {% comment %} Custom Mobile Ajax Retailer Filter {% endcomment %}
+              <details
+                id="Details-Mobile-Retailer-{{ section.id }}"
+                class="mobile-facets__details js-filter"
+                data-index="mobile-retailer"
+              >
+                <summary class="mobile-facets__summary focus-inset">
+                  <div>
+                    <span>Retailer</span>
+                    <span class="mobile-facets__arrow">
+                      {{- 'icon-arrow.svg' | inline_asset_content -}}
+                    </span>
+                  </div>
+                </summary>
+                <div
+                  id="FacetMobile-Retailer-{{ section.id }}"
+                  class="mobile-facets__submenu gradient"
+                >
+                  <button
+                    class="mobile-facets__close-button link link--text focus-inset"
+                    aria-expanded="true"
+                    type="button"
+                  >
+                    {{- 'icon-arrow.svg' | inline_asset_content -}}
+                    <span>Retailer</span>
+                  </button>
+                  <ul class="mobile-facets__list list-unstyled" role="list" id="mobile-retailer-options">
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-abercrombie" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="Abercrombie & Fitch"
+                          id="mobile-retailer-abercrombie"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">Abercrombie & Fitch</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-anthropologie" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="Anthropologie"
+                          id="mobile-retailer-anthropologie"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">Anthropologie</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-aritzia" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="Aritzia"
+                          id="mobile-retailer-aritzia"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">Aritzia</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-asos" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="ASOS"
+                          id="mobile-retailer-asos"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">ASOS</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-hm" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="H&M"
+                          id="mobile-retailer-hm"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">H&M</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-mango" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="Mango"
+                          id="mobile-retailer-mango"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">Mango</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-nordstrom" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="Nordstrom"
+                          id="mobile-retailer-nordstrom"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">Nordstrom</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-revolve" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="Revolve"
+                          id="mobile-retailer-revolve"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">Revolve</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-uniqlo" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="Uniqlo"
+                          id="mobile-retailer-uniqlo"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">Uniqlo</span>
+                        </span>
+                      </label>
+                    </li>
+                    <li class="mobile-facets__item list-menu__item">
+                      <label for="mobile-retailer-urban" class="facets__label mobile-facets__label">
+                        <input
+                          class="mobile-facets__checkbox"
+                          type="checkbox"
+                          name="retailer"
+                          value="Urban Outfitters"
+                          id="mobile-retailer-urban"
+                        >
+                        <span class="mobile-facets__highlight"></span>
+                        {{- 'square.svg' | inline_asset_content -}}
+                        {{- 'icon-checkmark.svg' | inline_asset_content -}}
+                        <span class="facet-checkbox__text" aria-hidden="true">
+                          <span class="facet-checkbox__text-label">Urban Outfitters</span>
+                        </span>
+                      </label>
+                    </li>
+                  </ul>
+                  <div class="mobile-facets__footer gradient">
+                    <button
+                      type="button"
+                      class="mobile-facets__clear underlined-link"
+                      id="mobile-clear-retailer-filters"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      class="button button--primary"
+                      onclick="this.closest('.mobile-facets__wrapper').querySelector('summary').click()"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              </details>
 
               {%- if enable_sorting -%}
                 <div

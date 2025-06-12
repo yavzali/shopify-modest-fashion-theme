@@ -43,20 +43,31 @@ class AjaxFilters {
     
     // Use event delegation for better performance and dynamic content handling
     document.addEventListener('change', (e) => {
+      // Desktop retailer filter
       if (e.target.matches('#Details-retailer-filter input[type="checkbox"]')) {
         this.handleRetailerFilterChange(e);
       }
       
-      // Handle sort dropdown changes
-      if (e.target.matches('#SortBy')) {
+      // Mobile retailer filter
+      if (e.target.matches('#mobile-retailer-options input[type="checkbox"]')) {
+        this.handleMobileRetailerFilterChange(e);
+      }
+      
+      // Handle sort dropdown changes (both desktop and mobile)
+      if (e.target.matches('#SortBy, #SortBy-mobile')) {
         this.handleSortChange(e);
       }
     });
 
-    // Handle summary clicks for retailer filter
+    // Handle summary clicks for retailer filter (desktop)
     document.addEventListener('click', (e) => {
       if (e.target.closest('#Details-retailer-filter summary')) {
         this.updateRetailerFilterState();
+      }
+      
+      // Handle mobile clear button
+      if (e.target.matches('#mobile-clear-retailer-filters')) {
+        this.clearMobileRetailerFilters();
       }
     });
     
@@ -73,12 +84,21 @@ class AjaxFilters {
     if (retailerTags.length > 0) {
       this.activeFilters.set('retailer', retailerTags);
       
-      // Update checkboxes to reflect current state
+      // Update desktop checkboxes to reflect current state
       retailerTags.forEach(tag => {
         const checkbox = document.querySelector(`#Details-retailer-filter input[value="${tag}"]`);
         if (checkbox) {
           checkbox.checked = true;
           checkbox.closest('.facet-checkbox').classList.add('active');
+        }
+      });
+      
+      // Update mobile checkboxes to reflect current state
+      retailerTags.forEach(tag => {
+        const mobileCheckbox = document.querySelector(`#mobile-retailer-options input[value="${tag}"]`);
+        if (mobileCheckbox) {
+          mobileCheckbox.checked = true;
+          mobileCheckbox.closest('.mobile-facets__item').classList.add('active');
         }
       });
       
@@ -125,7 +145,88 @@ class AjaxFilters {
     
     // Update UI and perform Ajax request
     this.updateRetailerFilterState();
+    this.syncMobileFilters();
     this.performAjaxFilter();
+  }
+  
+  /**
+   * Handle mobile retailer filter checkbox changes
+   */
+  handleMobileRetailerFilterChange(event) {
+    const checkbox = event.target;
+    const retailerKey = checkbox.value;
+    
+    console.log('Mobile retailer filter changed:', retailerKey, checkbox.checked);
+    
+    // Update active filters
+    if (!this.activeFilters.has('retailer')) {
+      this.activeFilters.set('retailer', []);
+    }
+    
+    const activeRetailers = this.activeFilters.get('retailer');
+    
+    if (checkbox.checked) {
+      if (!activeRetailers.includes(retailerKey)) {
+        activeRetailers.push(retailerKey);
+      }
+      checkbox.closest('.mobile-facets__item').classList.add('active');
+    } else {
+      const index = activeRetailers.indexOf(retailerKey);
+      if (index > -1) {
+        activeRetailers.splice(index, 1);
+      }
+      checkbox.closest('.mobile-facets__item').classList.remove('active');
+    }
+    
+    // Clean up empty arrays
+    if (activeRetailers.length === 0) {
+      this.activeFilters.delete('retailer');
+    }
+    
+    // Update UI and sync with desktop
+    this.updateRetailerFilterState();
+    this.syncDesktopFilters();
+    this.performAjaxFilter();
+  }
+  
+  /**
+   * Sync mobile filters with desktop state
+   */
+  syncMobileFilters() {
+    const retailerFilters = this.activeFilters.get('retailer') || [];
+    
+    // Update mobile checkboxes to match desktop state
+    const mobileCheckboxes = document.querySelectorAll('#mobile-retailer-options input[type="checkbox"]');
+    mobileCheckboxes.forEach(checkbox => {
+      const isActive = retailerFilters.includes(checkbox.value);
+      checkbox.checked = isActive;
+      
+      if (isActive) {
+        checkbox.closest('.mobile-facets__item').classList.add('active');
+      } else {
+        checkbox.closest('.mobile-facets__item').classList.remove('active');
+      }
+    });
+  }
+  
+  /**
+   * Sync desktop filters with mobile state
+   */
+  syncDesktopFilters() {
+    const retailerFilters = this.activeFilters.get('retailer') || [];
+    
+    // Update desktop checkboxes to match mobile state
+    const desktopCheckboxes = document.querySelectorAll('#Details-retailer-filter input[type="checkbox"]');
+    desktopCheckboxes.forEach(checkbox => {
+      const isActive = retailerFilters.includes(checkbox.value);
+      checkbox.checked = isActive;
+      
+      if (isActive) {
+        checkbox.closest('.facet-checkbox').classList.add('active');
+      } else {
+        checkbox.closest('.facet-checkbox').classList.remove('active');
+      }
+    });
   }
   
   /**
@@ -270,6 +371,28 @@ class AjaxFilters {
     
     // Navigate to new URL
     window.location.href = url.toString();
+  }
+  
+  /**
+   * Clear mobile retailer filters
+   */
+  clearMobileRetailerFilters() {
+    console.log('Clearing mobile retailer filters');
+    
+    // Clear active filters
+    this.activeFilters.delete('retailer');
+    
+    // Clear mobile checkboxes
+    const mobileCheckboxes = document.querySelectorAll('#mobile-retailer-options input[type="checkbox"]');
+    mobileCheckboxes.forEach(checkbox => {
+      checkbox.checked = false;
+      checkbox.closest('.mobile-facets__item').classList.remove('active');
+    });
+    
+    // Sync with desktop and update UI
+    this.syncDesktopFilters();
+    this.updateRetailerFilterState();
+    this.performAjaxFilter();
   }
 }
 
