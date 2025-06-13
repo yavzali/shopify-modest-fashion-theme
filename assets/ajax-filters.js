@@ -62,7 +62,7 @@ class AjaxFilters {
       return;
     }
     
-    console.log('AjaxFilters: Initializing enhanced debugging version...');
+    console.log('=== INITIALIZING AJAX FILTER SYSTEM ===');
     
     // Check if we're on a collection page
     if (!window.location.pathname.includes('/collections/')) {
@@ -70,10 +70,17 @@ class AjaxFilters {
       return;
     }
     
-    // Wait a bit for elements to be ready
+    // Perform the actual initialization
+    this.performInitialization();
+    
+    // Initialize comprehensive image standardization system
     setTimeout(() => {
-      this.performInitialization();
-    }, 100);
+      this.applyImageStandardization();
+      this.setupImageStandardizationObserver();
+    }, 200);
+    
+    console.log('✅ Ajax filter system initialized with comprehensive image standardization');
+    console.log('=== END INITIALIZING AJAX FILTER SYSTEM ===');
   }
   
   /**
@@ -714,6 +721,12 @@ class AjaxFilters {
         const result = this.parseFilterResponse(response);
         this.updatePageContent(result.html, result.productCount, result.hasPagination);
         this.updateURL('/collections/all');
+        
+        // Apply comprehensive image standardization after content update
+        setTimeout(() => {
+          this.applyImageStandardization();
+        }, 150);
+        
         this.hideLoadingState();
       } else if (this.activeFilters.length === 1) {
         // Single filter - use direct request for efficiency
@@ -725,6 +738,12 @@ class AjaxFilters {
         const result = this.parseFilterResponse(response);
         this.updatePageContent(result.html, result.productCount, result.hasPagination);
         this.updateURL(this.buildFilterURL());
+        
+        // Apply comprehensive image standardization after content update
+        setTimeout(() => {
+          this.applyImageStandardization();
+        }, 150);
+        
         this.hideLoadingState();
       } else {
         // Multiple filters - use OR logic with client-side merging
@@ -1094,7 +1113,12 @@ class AjaxFilters {
         console.log('Pagination hidden for merged results');
       }
       
-      console.log('Page content updated successfully with merged results');
+      // Apply comprehensive image standardization after merged content update
+      setTimeout(() => {
+        this.applyImageStandardization();
+      }, 150);
+      
+      console.log(`✅ Merged results updated successfully: ${totalCount} products with image standardization`);
       
     } catch (error) {
       console.error('Error updating page content with merged results:', error);
@@ -1254,7 +1278,12 @@ class AjaxFilters {
       // Update product count displays
       this.updateProductCount(productCount);
       
-      console.log('Page content updated successfully');
+      // Apply comprehensive image standardization after content update
+      setTimeout(() => {
+        this.applyImageStandardization();
+      }, 150);
+      
+      console.log('Page content updated successfully with image standardization');
     } catch (error) {
       console.error('Error updating page content:', error);
     }
@@ -1281,6 +1310,142 @@ class AjaxFilters {
     }
     
     console.log('=== END UPDATING URL ===');
+  }
+
+  /**
+   * COMPREHENSIVE IMAGE STANDARDIZATION SYSTEM
+   * This system actively applies image standardization after every Ajax operation
+   * to ensure consistency across all filter states and DOM updates
+   */
+  
+  /**
+   * Apply comprehensive image standardization to all product images
+   */
+  applyImageStandardization() {
+    console.log('=== APPLYING COMPREHENSIVE IMAGE STANDARDIZATION ===');
+    
+    try {
+      // Find all product images using comprehensive selectors
+      const imageSelectors = [
+        '.card__media img',
+        '.card__media .media img',
+        '#product-grid .card__media img',
+        '.collection .card__media img',
+        '.product-grid .card__media img',
+        'ul.grid .card__media img',
+        '.grid__item .card__media img',
+        '.card-wrapper .card__media img',
+        '[class*="card"] img',
+        '.product-card img'
+      ];
+      
+      let totalImagesProcessed = 0;
+      
+      imageSelectors.forEach(selector => {
+        const images = document.querySelectorAll(selector);
+        console.log(`Found ${images.length} images with selector: ${selector}`);
+        
+        images.forEach((img, index) => {
+          // Apply standardization styles directly via JavaScript
+          img.style.border = '1px solid #e5e5e5';
+          img.style.borderRadius = '0';
+          img.style.boxSizing = 'border-box';
+          img.style.objectFit = 'cover';
+          
+          // Ensure the image loads properly
+          if (!img.complete) {
+            img.addEventListener('load', () => {
+              img.style.border = '1px solid #e5e5e5';
+              img.style.borderRadius = '0';
+              img.style.boxSizing = 'border-box';
+              img.style.objectFit = 'cover';
+            });
+          }
+          
+          totalImagesProcessed++;
+        });
+      });
+      
+      // Also apply to hover state images
+      const hoverImages = document.querySelectorAll('.card__media .media--hover img, .card__media .media:last-child img');
+      hoverImages.forEach(img => {
+        img.style.border = '1px solid #e5e5e5';
+        img.style.borderRadius = '0';
+        img.style.boxSizing = 'border-box';
+        img.style.objectFit = 'cover';
+        totalImagesProcessed++;
+      });
+      
+      // Apply container adjustments to prevent layout shifts
+      const mediaContainers = document.querySelectorAll('.card__media, .card__media .media');
+      mediaContainers.forEach(container => {
+        container.style.boxSizing = 'border-box';
+      });
+      
+      console.log(`✅ Image standardization applied to ${totalImagesProcessed} images`);
+      console.log(`✅ Container adjustments applied to ${mediaContainers.length} containers`);
+      
+    } catch (error) {
+      console.error('Error applying image standardization:', error);
+    }
+    
+    console.log('=== END APPLYING IMAGE STANDARDIZATION ===');
+  }
+  
+  /**
+   * Set up mutation observer to watch for DOM changes and reapply image standardization
+   */
+  setupImageStandardizationObserver() {
+    console.log('=== SETTING UP IMAGE STANDARDIZATION OBSERVER ===');
+    
+    // Create a mutation observer to watch for DOM changes
+    const observer = new MutationObserver((mutations) => {
+      let shouldReapplyStandardization = false;
+      
+      mutations.forEach((mutation) => {
+        // Check if new nodes were added that might contain images
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              // Check if the added node contains product images
+              if (node.querySelector && (
+                node.querySelector('.card__media img') ||
+                node.querySelector('.product-card img') ||
+                node.classList.contains('card-wrapper') ||
+                node.classList.contains('grid__item')
+              )) {
+                shouldReapplyStandardization = true;
+              }
+            }
+          });
+        }
+      });
+      
+      if (shouldReapplyStandardization) {
+        console.log('🔄 DOM changes detected, reapplying image standardization...');
+        // Use a small delay to ensure DOM is fully updated
+        setTimeout(() => {
+          this.applyImageStandardization();
+        }, 100);
+      }
+    });
+    
+    // Start observing the product grid for changes
+    const productGrid = document.querySelector('#product-grid, .collection, .grid');
+    if (productGrid) {
+      observer.observe(productGrid, {
+        childList: true,
+        subtree: true
+      });
+      console.log('✅ Image standardization observer started');
+    } else {
+      console.error('❌ Product grid not found for observer');
+    }
+    
+    // Store observer reference for cleanup if needed
+    this.imageObserver = observer;
+    
+    console.log('=== END SETTING UP IMAGE STANDARDIZATION OBSERVER ===');
   }
 }
 
