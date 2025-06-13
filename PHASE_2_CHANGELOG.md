@@ -501,6 +501,13 @@ ul.grid .card__media img {
 - Ajax filtering endpoints working properly
 - No conflicts with existing Dawn theme functionality
 
+**Implementation Status**: ✅ **COMPLETE AND DEPLOYED**
+- Enhanced `assets/template-collection.css` successfully updated
+- Old Phase 1.7 implementation removed to prevent conflicts
+- Ajax-compatible selectors implemented with high specificity
+- Mobile responsiveness and hover states fully covered
+- All changes committed to GitHub and deployed to development environment
+
 ### **📊 Technical Benefits Achieved**
 
 1. **Ajax Survival**: CSS survives `innerHTML` replacement operations
@@ -532,185 +539,68 @@ ul.grid .card__media img {
 
 ---
 
-## ✅ **PHASE A: LOADING STATE MANAGEMENT - COMPLETED** - January 12, 2025
+## 🚀 **TRANSITION TO PHASE B: GRID LAYOUT FOR MULTIPLE RETAILERS** - January 12, 2025
 
-### **🎉 PHASE A SUCCESSFULLY COMPLETED**
-**Status**: ✅ **COMPLETE AND VERIFIED** - All critical overlay issues resolved
+### **Phase B Readiness Assessment**
 
-### **Final Verification Results**
-Through comprehensive testing using MCP Playwright browser tools, Phase A has been successfully completed with all objectives met:
+**Foundation Complete**: ✅ **READY FOR PHASE B**
+- **Phase A**: Loading state management working perfectly
+- **Image Standardization**: Ajax-compatible implementation deployed
+- **Development Environment**: Stable and responsive
+- **Documentation**: Comprehensive analysis and risk assessment complete
 
-✅ **Root Cause Identified and Fixed**: Dawn's native loading overlay (`.loading-overlay.gradient`) was not being properly managed  
-✅ **Comprehensive Loading State Management**: Enhanced to control three loading systems simultaneously  
-✅ **Products Fully Clickable**: Successfully tested navigation to product detail pages  
-✅ **Pagination Accessible**: All pagination links fully interactive  
-✅ **Multiple Filter Tests Passed**: Verified with both Mango (113 products) and ASOS (446 products)  
-✅ **No Semi-Opaque Overlay**: Complete elimination of blocking overlay issue  
-✅ **Dawn Styling Preserved**: All native Dawn theme aesthetics maintained  
-✅ **Cross-Device Compatibility**: Works perfectly on all device types  
+### **Phase B Objectives**
+**Primary Goal**: Fix grid layout issues when selecting multiple retailers and their results are merged client-side
 
-### **Critical Issue Resolved**
-**Problem**: Semi-opaque overlay was blocking all user interactions with products and pagination after applying retailer filters. Products became unclickable despite appearing correctly filtered.
+**Specific Issues to Address**:
+1. **Grid Layout Breaking**: Products displaying in single column instead of proper grid when multiple retailers selected
+2. **CSS Class Preservation**: Ensure Dawn's grid classes survive DOM replacement operations
+3. **Responsive Behavior**: Maintain proper grid layout across all device types
+4. **Visual Consistency**: Grid should look identical to single retailer selections
 
-### **Root Cause Discovery**
-Through systematic debugging using MCP Playwright browser tools, identified that the issue was **NOT** with our custom loading state management, but with **Dawn's native loading overlay system** that we weren't controlling.
+### **Technical Challenge Analysis**
 
-**Key Discovery**: Dawn theme has its own loading overlay (`.loading-overlay.gradient`) controlled by the `.loading` class on the `.collection` element. Our JavaScript was only managing custom loading states but not Dawn's built-in system.
-
-**Error Evidence**: Browser error showed `<div class="loading-overlay gradient"></div> intercepts pointer events` - this was the Dawn loading overlay remaining active after Ajax requests completed.
-
-### **Technical Fix Applied**
-Enhanced both `showLoadingState()` and `hideLoadingState()` methods in `assets/ajax-filters.js` to manage three loading state systems:
-
-1. **Custom Loading State**: `opacity: 0.5` and `pointerEvents: none` on product grid
-2. **Dawn's Native Loading Class**: Adding/removing `.loading` class on `.collection` element  
-3. **Direct Loading Overlay Control**: Force hiding the `.loading-overlay` element as failsafe
-
+**Root Cause**: The `updatePageContentWithMergedResults()` method in `assets/ajax-filters.js` replaces entire product grid HTML:
 ```javascript
-showLoadingState() {
-  // Custom loading state
-  const productGrid = document.querySelector('#product-grid, .collection');
-  if (productGrid) {
-    productGrid.style.opacity = '0.5';
-    productGrid.style.pointerEvents = 'none';
-  }
-  
-  // CRITICAL FIX: Dawn's native loading overlay
-  const collectionContainer = document.querySelector('.collection');
-  if (collectionContainer) {
-    collectionContainer.classList.add('loading');
-  }
-}
-
-hideLoadingState() {
-  // Custom loading state
-  const productGrid = document.querySelector('#product-grid, .collection');
-  if (productGrid) {
-    productGrid.style.opacity = '1';
-    productGrid.style.pointerEvents = 'auto';
-  }
-  
-  // CRITICAL FIX: Dawn's native loading overlay
-  const collectionContainer = document.querySelector('.collection');
-  if (collectionContainer) {
-    collectionContainer.classList.remove('loading');
-  }
-  
-  // ADDITIONAL FAILSAFE: Direct overlay control
-  const loadingOverlay = document.querySelector('.loading-overlay');
-  if (loadingOverlay) {
-    loadingOverlay.style.display = 'none';
-  }
+updatePageContentWithMergedResults(combinedProducts, totalCount, hasPagination) {
+  // ⚠️ DANGER ZONE: This replaces entire HTML, potentially losing grid CSS classes
+  productGrid.innerHTML = combinedHTML;
 }
 ```
 
-### **Verification Results**
-✅ **Filter Applied Successfully**: Mango filter selected, 113 products shown  
-✅ **Loading State Managed**: Both custom and Dawn loading states properly controlled  
-✅ **Products Clickable**: Successfully navigated to product detail page  
-✅ **No Overlay Blocking**: No semi-opaque overlay interfering with interactions  
-✅ **Pagination Accessible**: All UI elements fully interactive  
-✅ **Dawn Styling Preserved**: All native Dawn theme aesthetics maintained
+**Risk Assessment for Phase B**:
+- **High Risk**: DOM replacement might not preserve Dawn's grid CSS classes
+- **Medium Risk**: Responsive breakpoints might not work correctly with merged content
+- **Low Risk**: Image standardization should survive (already tested and verified)
 
-### **Console Evidence**
-Complete loading state lifecycle properly managed:
-```
-=== SHOWING LOADING STATE ===
-Loading state applied: opacity=0.5, pointerEvents=none
-Dawn loading class added to collection container
-=== END SHOWING LOADING STATE ===
+### **Implementation Strategy for Phase B**
 
-[Ajax request completes successfully - 113 products fetched]
+**Approach**: Preserve Dawn's exact grid structure during DOM replacement
+1. **Analyze Current Grid Structure**: Document Dawn's exact grid HTML and CSS classes
+2. **Enhance DOM Replacement**: Ensure merged results use identical grid structure
+3. **Test Grid Preservation**: Verify grid layout works with merged content
+4. **Responsive Testing**: Confirm grid works across all breakpoints
 
-=== HIDING LOADING STATE ===
-Loading state removed: opacity=1, pointerEvents=auto
-Dawn loading class removed from collection container
-Loading overlay directly hidden with display: none
-=== END HIDING LOADING STATE ===
-```
+**Success Criteria**:
+- ✅ Multiple retailer selection shows proper grid layout (not single column)
+- ✅ Grid layout identical to single retailer selections
+- ✅ Responsive behavior maintained across all device types
+- ✅ Phase A loading states continue working
+- ✅ Image standardization preserved
 
-### **Impact & Foundation**
-- **Resolved**: Semi-opaque overlay blocking product interactions
-- **Resolved**: Pagination becoming unclickable after filtering
-- **Maintained**: All existing Phase 1 & 2 functionality
-- **Maintained**: Dawn theme styling and behavior
-- **Enhanced**: Comprehensive loading state management for all scenarios
-- **Foundation**: Solid base for Phase B (Grid Layout) and Phase C (Pagination)
+### **Files to Modify in Phase B**
+- **Primary**: `assets/ajax-filters.js` - Enhance `updatePageContentWithMergedResults()` method
+- **Testing**: Comprehensive MCP Playwright verification across device types
+- **Documentation**: Update Phase B section with implementation details
 
-**Phase A provides the critical foundation that enables all subsequent phases to be properly tested and validated.**
+### **Phase B Implementation Plan**
+1. **Current State Analysis**: Document existing grid layout behavior
+2. **Grid Structure Investigation**: Analyze Dawn's grid HTML and CSS classes
+3. **DOM Replacement Enhancement**: Modify JavaScript to preserve grid structure
+4. **Comprehensive Testing**: Verify grid layout across all scenarios
+5. **Documentation Update**: Record implementation details and lessons learned
 
----
-
-## ⚠️ **CRITICAL REGRESSION IDENTIFIED: IMAGE STANDARDIZATION LOST**
-
-### **🚨 Phase 1-1.8 Image Standardization Regression**
-
-**Issue Discovered**: During Phase A development and testing, we identified that the **image standardization fixes from Phase 1 through Phase 1.8 have been lost**. The product grid images are no longer displaying with the consistent aspect ratios and sizing that were achieved in the earlier phases.
-
-### **Why This Happened**
-**Root Cause**: The Ajax filtering implementation in Phase 2 involved significant modifications to the product grid rendering system:
-
-1. **Template Structure Changes**: Modifications to `sections/main-collection-product-grid.liquid` for Ajax compatibility
-2. **CSS Class Modifications**: Changes to support Ajax loading states may have affected image styling
-3. **JavaScript DOM Manipulation**: Ajax product grid updates may not preserve the original image standardization CSS
-4. **Liquid Template Logic**: Ajax responses use different template rendering paths that may bypass image standardization
-
-### **Specific Areas Affected**
-- **Product Card Images**: No longer maintaining consistent aspect ratios
-- **Grid Layout**: Images may be displaying at inconsistent sizes
-- **Responsive Behavior**: Image scaling across breakpoints may be inconsistent
-- **Hover Effects**: Image hover states may not be working as designed in Phase 1
-
-### **Why Adding It Back Could Cause Breakages**
-
-#### **1. Ajax Response Conflicts**
-- **Issue**: Image standardization CSS may conflict with Ajax-loaded product HTML
-- **Risk**: Ajax responses might not include the necessary CSS classes for image standardization
-- **Potential Breakage**: Images could break entirely during Ajax filtering operations
-
-#### **2. Loading State Interference**
-- **Issue**: Image standardization CSS might interfere with the loading overlay system we just fixed in Phase A
-- **Risk**: Loading states could cause image sizing to behave unpredictably
-- **Potential Breakage**: Could reintroduce the overlay blocking issue we just resolved
-
-#### **3. Template Rendering Path Conflicts**
-- **Issue**: Ajax filtering uses different Liquid template rendering than standard page loads
-- **Risk**: Image standardization logic might not execute properly in Ajax contexts
-- **Potential Breakage**: Images could display correctly on initial load but break after filtering
-
-#### **4. CSS Specificity Wars**
-- **Issue**: New Ajax-related CSS might have different specificity than image standardization CSS
-- **Risk**: CSS conflicts could cause unpredictable image behavior
-- **Potential Breakage**: Images might flicker between different sizes during interactions
-
-#### **5. JavaScript State Management**
-- **Issue**: Image standardization might require JavaScript that conflicts with Ajax filter state management
-- **Risk**: Two JavaScript systems trying to control the same DOM elements
-- **Potential Breakage**: Could cause JavaScript errors that break both filtering and image display
-
-### **Recommended Approach for Future Phases**
-
-#### **Phase B Considerations**
-- **Test Image Behavior**: Verify how current Ajax system affects image display
-- **Document Current State**: Take screenshots of current image behavior for comparison
-- **Plan Integration Strategy**: Design how to reintegrate image standardization without breaking Ajax
-
-#### **Phase C: Image Standardization Recovery**
-- **Dedicated Phase**: Treat image standardization recovery as its own phase
-- **Ajax-Compatible Implementation**: Redesign image standardization to work with Ajax filtering
-- **Comprehensive Testing**: Test all combinations of filtering + image standardization
-- **Rollback Plan**: Ensure we can revert if integration causes critical issues
-
-#### **Technical Strategy**
-1. **CSS-Only Approach**: Prefer CSS-only solutions that don't interfere with JavaScript
-2. **Ajax Response Integration**: Ensure image standardization works in Ajax-loaded content
-3. **Loading State Compatibility**: Verify image CSS doesn't interfere with loading overlays
-4. **Progressive Enhancement**: Add image standardization as enhancement, not requirement
-
-### **Current Priority**
-**Decision**: Proceed with Phase B (Grid Layout) and Phase C (Pagination) first, then address image standardization in a dedicated phase. This ensures we don't introduce regressions to the critical filtering functionality we've just stabilized.
-
-**Rationale**: The core filtering functionality is more critical than image standardization. Once we have a stable, complete filtering system, we can safely reintegrate image enhancements.
+**Ready to Begin Phase B Implementation** 🚀
 
 ---
 
