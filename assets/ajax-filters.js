@@ -996,31 +996,89 @@ class AjaxFilters {
     console.log('Total count:', totalCount);
     
     try {
-      // Update product grid with combined products
+      // Find the product grid container
       const productGrid = document.querySelector('#product-grid, .collection, .grid--2-col-tablet, .grid--4-col-desktop, ul.grid');
       if (productGrid && combinedProducts.length > 0) {
-        // Create combined HTML from all products
+        
+        // PHASE B FIX: Preserve Dawn's grid structure
+        console.log('=== PRESERVING GRID STRUCTURE ===');
+        
+        // Check if the current grid is a UL element (Dawn's standard structure)
+        const isULGrid = productGrid.tagName.toLowerCase() === 'ul';
+        console.log('Grid is UL element:', isULGrid);
+        console.log('Grid classes:', productGrid.className);
+        
+        // Create combined HTML from all products, ensuring proper grid item structure
         let combinedHTML = '';
-        combinedProducts.forEach(product => {
+        combinedProducts.forEach((product, index) => {
           if (product && product.element) {
-            combinedHTML += product.element;
+            let productHTML = product.element;
+            
+            // If the product element is already a proper grid item (li), use it as-is
+            if (productHTML.trim().startsWith('<li') && productHTML.includes('grid__item')) {
+              combinedHTML += productHTML;
+              console.log(`Product ${index + 1}: Already proper grid item`);
+            } 
+            // If it's not a proper grid item, wrap it in the correct structure
+            else {
+              // Extract the inner content if it's wrapped in other elements
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = productHTML;
+              
+              // Look for the actual product card content
+              const cardWrapper = tempDiv.querySelector('.card-wrapper, .card, [class*="card"]');
+              if (cardWrapper) {
+                combinedHTML += `<li class="grid__item scroll-trigger animate--slide-in" data-cascade>${cardWrapper.outerHTML}</li>`;
+                console.log(`Product ${index + 1}: Wrapped in grid item structure`);
+              } else {
+                // Fallback: wrap the entire content
+                combinedHTML += `<li class="grid__item scroll-trigger animate--slide-in" data-cascade>${productHTML}</li>`;
+                console.log(`Product ${index + 1}: Fallback wrapping applied`);
+              }
+            }
           } else if (product && product.outerHTML) {
-            combinedHTML += product.outerHTML;
+            // Handle case where product has outerHTML property
+            let productHTML = product.outerHTML;
+            if (productHTML.trim().startsWith('<li') && productHTML.includes('grid__item')) {
+              combinedHTML += productHTML;
+            } else {
+              combinedHTML += `<li class="grid__item scroll-trigger animate--slide-in" data-cascade>${productHTML}</li>`;
+            }
           } else {
             console.log('Invalid product element:', product);
           }
         });
         
         if (combinedHTML) {
+          // Ensure the grid container has the correct classes
+          if (isULGrid) {
+            // For UL grids, make sure it has the proper Dawn grid classes
+            if (!productGrid.classList.contains('grid')) {
+              productGrid.classList.add('grid');
+            }
+            if (!productGrid.classList.contains('product-grid')) {
+              productGrid.classList.add('product-grid');
+            }
+            if (!productGrid.classList.contains('grid--2-col-tablet-down')) {
+              productGrid.classList.add('grid--2-col-tablet-down');
+            }
+            if (!productGrid.classList.contains('grid--4-col-desktop')) {
+              productGrid.classList.add('grid--4-col-desktop');
+            }
+          }
+          
+          // Update the grid content
           productGrid.innerHTML = combinedHTML;
-          console.log('Product grid updated with merged results');
+          console.log('Product grid updated with merged results and preserved grid structure');
+          console.log('Final grid classes:', productGrid.className);
+          
         } else {
           console.error('No valid product HTML generated');
         }
       } else if (combinedProducts.length === 0) {
         // No products found
         if (productGrid) {
-          productGrid.innerHTML = '<p>No products found matching your filters.</p>';
+          productGrid.innerHTML = '<li class="grid__item"><p>No products found matching your filters.</p></li>';
         }
       } else {
         console.error('Product grid container not found');
