@@ -1,24 +1,68 @@
 /**
- * Phase 2A: Ajax Infrastructure + Retailer Filter - INLINE VERSION
+ * Phase 2B: Simplified Ajax Retailer Filter - ENHANCED DEBUGGING VERSION
  * 
- * This system provides Ajax functionality for the inline retailer filter.
- * The filter HTML is now inline in the facets.liquid template.
+ * This system provides Ajax functionality for the retailer filter with custom filter pills.
+ * Enhanced with comprehensive debugging and error handling.
  */
 
 class AjaxFilters {
   constructor() {
-    this.activeFilters = new Map();
+    this.activeFilters = [];
     this.isLoading = false;
+    this.initialized = false;
     
-    // Initialize immediately - filter is inline in template
-    this.init();
+    // Initialize with multiple fallbacks
+    this.initializeWithFallbacks();
+  }
+  
+  /**
+   * Initialize with multiple fallback mechanisms
+   */
+  initializeWithFallbacks() {
+    console.log('AjaxFilters: Starting initialization with fallbacks...');
+    
+    // Try immediate initialization
+    if (document.readyState === 'complete') {
+      console.log('Document already complete, initializing immediately');
+      this.init();
+    } else if (document.readyState === 'interactive') {
+      console.log('Document interactive, initializing immediately');
+      this.init();
+    } else {
+      console.log('Document still loading, setting up event listeners');
+      // Set up multiple event listeners for different loading states
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOMContentLoaded fired, initializing');
+        this.init();
+      });
+      
+      document.addEventListener('readystatechange', () => {
+        if (document.readyState === 'interactive' || document.readyState === 'complete') {
+          console.log('ReadyState changed to', document.readyState, 'initializing');
+          this.init();
+        }
+      });
+      
+      // Fallback timeout
+      setTimeout(() => {
+        if (!this.initialized) {
+          console.log('Fallback timeout reached, force initializing');
+          this.init();
+        }
+      }, 2000);
+    }
   }
   
   /**
    * Initialize the Ajax filters system
    */
   init() {
-    console.log('AjaxFilters: Initializing with inline filter...');
+    if (this.initialized) {
+      console.log('AjaxFilters: Already initialized, skipping');
+      return;
+    }
+    
+    console.log('AjaxFilters: Initializing enhanced debugging version...');
     
     // Check if we're on a collection page
     if (!window.location.pathname.includes('/collections/')) {
@@ -26,375 +70,1163 @@ class AjaxFilters {
       return;
     }
     
+    // Wait a bit for elements to be ready
+    setTimeout(() => {
+      this.performInitialization();
+    }, 100);
+  }
+  
+  /**
+   * Perform the actual initialization
+   */
+  performInitialization() {
+    console.log('AjaxFilters: Performing initialization...');
+    
+    // Debug: Check if key elements exist
+    this.debugElementExistence();
+    
     // Set up event listeners
     this.setupEventListeners();
     
-    // Update filter state based on current URL
+    // Update filter state from URL on page load
     this.updateFilterStateFromURL();
     
+    // Set up aggressive URL monitoring for HotReload interference
+    this.setupPeriodicURLCheck();
+    
+    // Add additional delayed URL checks to handle HotReload timing issues
+    setTimeout(() => {
+      console.log('🕐 DELAYED URL CHECK (5s): Checking for missed URL parameters...');
+      this.checkAndSyncURLState();
+    }, 5000);
+    
+    setTimeout(() => {
+      console.log('🕐 DELAYED URL CHECK (10s): Final check for missed URL parameters...');
+      this.checkAndSyncURLState();
+    }, 10000);
+    
+    this.initialized = true;
     console.log('AjaxFilters: Initialization complete');
   }
 
   /**
-   * Set up event listeners
+   * Debug helper to check if key elements exist
+   */
+  debugElementExistence() {
+    console.log('=== DEBUGGING ELEMENT EXISTENCE ===');
+    
+    // Check filter button elements
+    const summaryLabel = document.querySelector('#Details-retailer-filter .facets__summary-label');
+    console.log('Summary label found:', !!summaryLabel, summaryLabel);
+    
+    const headerSelected = document.querySelector('#Details-retailer-filter .facets__header .facets__selected');
+    console.log('Header selected found:', !!headerSelected, headerSelected);
+    
+    const summary = document.querySelector('#Details-retailer-filter summary');
+    console.log('Summary element found:', !!summary, summary);
+    
+    // Check filter pills container
+    const pillsContainer1 = document.querySelector('#ajax-filter-pills');
+    console.log('Pills container #ajax-filter-pills found:', !!pillsContainer1, pillsContainer1);
+    
+    const pillsContainer2 = document.querySelector('.active-facets.active-facets-desktop');
+    console.log('Pills container .active-facets.active-facets-desktop found:', !!pillsContainer2, pillsContainer2);
+    
+    // Check checkboxes
+    const checkboxes = document.querySelectorAll('input[name="filter.p.tag"]');
+    console.log('Retailer checkboxes found:', checkboxes.length);
+    checkboxes.forEach((cb, index) => {
+      console.log(`Checkbox ${index}:`, cb.value, cb.checked);
+    });
+    
+    console.log('=== END DEBUGGING ===');
+  }
+
+  /**
+   * Set up event listeners for filter interactions
    */
   setupEventListeners() {
     console.log('Setting up event listeners...');
     
-    // Use event delegation for better performance and dynamic content handling
+    // Use event delegation for more robust event handling
     document.addEventListener('change', (e) => {
-      // Desktop retailer filter
-      if (e.target.matches('#Details-retailer-filter input[type="checkbox"]')) {
-        this.handleRetailerFilterChange(e);
-      }
-      
-      // Mobile retailer filter
-      if (e.target.matches('#mobile-retailer-options input[type="checkbox"]')) {
-        this.handleMobileRetailerFilterChange(e);
-      }
-      
-      // Handle sort dropdown changes (both desktop and mobile)
-      if (e.target.matches('#SortBy, #SortBy-mobile')) {
-        this.handleSortChange(e);
+      if (e.target && e.target.name === 'filter.p.tag') {
+        console.log('=== CHECKBOX CHANGE EVENT (DELEGATED) ===');
+        console.log('Checkbox changed:', e.target.value, e.target.checked);
+        console.log('Event target:', e.target);
+        this.handleRetailerFilterChange(e.target);
+        console.log('=== END CHECKBOX CHANGE EVENT (DELEGATED) ===');
       }
     });
-
-    // Handle summary clicks for retailer filter (desktop)
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('#Details-retailer-filter summary')) {
-        this.updateRetailerFilterState();
-      }
-      
-      // Handle mobile clear button
-      if (e.target.matches('#mobile-clear-retailer-filters')) {
-        this.clearMobileRetailerFilters();
-      }
+    
+    // Also set up direct listeners as backup
+    const retailerCheckboxes = document.querySelectorAll('input[name="filter.p.tag"]');
+    console.log('Found retailer checkboxes:', retailerCheckboxes.length);
+    
+    retailerCheckboxes.forEach((checkbox, index) => {
+      console.log(`Setting up listener for checkbox ${index}:`, checkbox.value);
+      checkbox.addEventListener('change', (e) => {
+        console.log('=== CHECKBOX CHANGE EVENT (DIRECT) ===');
+        console.log('Checkbox changed:', e.target.value, e.target.checked);
+        console.log('Event target:', e.target);
+        this.handleRetailerFilterChange(e.target);
+        console.log('=== END CHECKBOX CHANGE EVENT (DIRECT) ===');
+      });
     });
     
     console.log('Event listeners set up successfully');
   }
   
   /**
-   * Update filter state from current URL
+   * Update filter state from URL parameters
    */
   updateFilterStateFromURL() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const retailerTags = urlParams.getAll('filter.p.tag');
+    console.log('=== UPDATING FILTER STATE FROM URL ===');
     
-    if (retailerTags.length > 0) {
-      this.activeFilters.set('retailer', retailerTags);
+    const urlParams = new URLSearchParams(window.location.search);
+    console.log('Current URL:', window.location.href);
+    console.log('URL search params:', window.location.search);
+    
+    // Get all retailer tags from URL and remove duplicates using Set
+    const allRetailerTags = urlParams.getAll('filter.p.tag');
+    const uniqueRetailerTags = [...new Set(allRetailerTags)].filter(tag => tag && tag.trim() !== '');
+    
+    console.log('All retailer tags from URL (including duplicates):', allRetailerTags);
+    console.log('Unique retailer tags from URL:', uniqueRetailerTags);
+    
+    // Validate that these are actual retailer values
+    const validRetailerTags = uniqueRetailerTags.filter(tag => {
+      const isValid = this.isValidRetailer(tag);
+      if (!isValid) {
+        console.log('Invalid retailer tag found:', tag);
+      }
+      return isValid;
+    });
+    
+    console.log('Valid retailer tags:', validRetailerTags);
+    console.log('Current active filters before update:', this.activeFilters);
+    
+    // Check if URL state matches current JavaScript state
+    const currentFiltersSet = new Set(this.activeFilters);
+    const urlFiltersSet = new Set(validRetailerTags);
+    
+    const setsEqual = currentFiltersSet.size === urlFiltersSet.size && 
+                     [...currentFiltersSet].every(filter => urlFiltersSet.has(filter));
+    
+    if (setsEqual) {
+      console.log('✅ Filter state already matches URL');
+    } else {
+      console.log('🔄 Updating filter state to match URL');
+      console.log('Current filters:', [...currentFiltersSet]);
+      console.log('URL filters:', [...urlFiltersSet]);
       
-      // Update desktop checkboxes to reflect current state
-      retailerTags.forEach(tag => {
-        const checkbox = document.querySelector(`#Details-retailer-filter input[value="${tag}"]`);
-        if (checkbox) {
-          checkbox.checked = true;
-          checkbox.closest('.facet-checkbox').classList.add('active');
-        }
-      });
-      
-      // Update mobile checkboxes to reflect current state
-      retailerTags.forEach(tag => {
-        const mobileCheckbox = document.querySelector(`#mobile-retailer-options input[value="${tag}"]`);
-        if (mobileCheckbox) {
-          mobileCheckbox.checked = true;
-          mobileCheckbox.closest('.mobile-facets__item').classList.add('active');
-        }
-      });
-      
-      // Update the filter summary
-      this.updateRetailerFilterState();
+      this.activeFilters = validRetailerTags;
+      this.updateUI();
     }
     
-    console.log('Filter state updated from URL:', this.activeFilters);
+    console.log('Final active filters:', this.activeFilters);
+    console.log('=== END UPDATING FILTER STATE FROM URL ===');
+  }
+  
+  /**
+   * Set up periodic URL checking to handle HotReload interference
+   */
+  setupPeriodicURLCheck() {
+    // Set up aggressive URL monitoring to handle HotReload interference
+    // This will check every 1 second to catch HotReload resets immediately
+    
+    console.log('🔄 Setting up AGGRESSIVE URL monitoring for HotReload interference...');
+    
+    const urlChecker = setInterval(() => {
+      // Skip URL monitoring if Ajax request is in progress
+      if (this.isLoading) {
+        console.log('⏸️ Skipping URL check - Ajax request in progress');
+        return;
+      }
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      // Get unique retailer tags from URL (remove duplicates)
+      const allRetailerTags = urlParams.getAll('filter.p.tag');
+      const uniqueRetailerTags = [...new Set(allRetailerTags)].filter(tag => tag && tag.trim() !== '');
+      
+      // Get unique active filters from JavaScript state
+      const uniqueActiveFilters = [...new Set(this.activeFilters)];
+      
+      // If URL has filters but our state doesn't, update our state
+      if (uniqueRetailerTags.length > 0 && uniqueActiveFilters.length === 0) {
+        console.log('🚨 HOTRELOAD INTERFERENCE DETECTED: URL has filters but JavaScript state is empty');
+        console.log('URL filters:', uniqueRetailerTags);
+        console.log('JavaScript state:', uniqueActiveFilters);
+        
+        this.activeFilters = uniqueRetailerTags;
+        this.updateUI();
+        
+        console.log('✅ State recovered from HotReload interference');
+      }
+      
+      // Also check if URL is empty but we have active filters (user navigated away)
+      // BUT only if we're not in the middle of an Ajax request
+      if (uniqueRetailerTags.length === 0 && uniqueActiveFilters.length > 0) {
+        // Additional check: make sure we're not just in the middle of updating the URL
+        // Wait a bit to see if the URL gets updated
+        setTimeout(() => {
+          if (this.isLoading) {
+            console.log('⏸️ Skipping URL clear check - Ajax request in progress');
+            return;
+          }
+          
+          const currentUrlParams = new URLSearchParams(window.location.search);
+          const currentAllTags = currentUrlParams.getAll('filter.p.tag');
+          const currentUniqueTags = [...new Set(currentAllTags)].filter(tag => tag && tag.trim() !== '');
+          
+          if (currentUniqueTags.length === 0 && this.activeFilters.length > 0) {
+            console.log('🔄 URL cleared but JavaScript still has filters, clearing state...');
+            this.activeFilters = [];
+            this.updateUI();
+            console.log('✅ State cleared to match empty URL');
+          }
+        }, 500); // Wait 500ms to allow for URL updates
+      }
+      
+      // Additional check: if URL has filters but UI doesn't reflect it
+      if (uniqueRetailerTags.length > 0 && !this.isLoading) {
+        const summaryLabel = document.querySelector('#Details-retailer-filter .facets__summary-label');
+        const selectedSpan = summaryLabel ? summaryLabel.querySelector('.facets__selected') : null;
+        
+        if (!selectedSpan || selectedSpan.textContent !== `(${uniqueRetailerTags.length})`) {
+          console.log('🚨 UI STATE MISMATCH DETECTED: URL has filters but UI doesn\'t show them');
+          console.log('Expected UI count:', uniqueRetailerTags.length);
+          console.log('Actual UI count:', selectedSpan ? selectedSpan.textContent : 'none');
+          
+          this.activeFilters = uniqueRetailerTags;
+          this.updateUI();
+          
+          console.log('✅ UI state forcibly synchronized with URL');
+        }
+      }
+    }, 1000); // Check every 1 second for immediate detection
+    
+    // Store the interval ID so we can clear it if needed
+    this.urlCheckerInterval = urlChecker;
+    
+    console.log('✅ AGGRESSIVE URL monitoring started (every 1 second)');
+    
+    // Also set up HotReload event detection if available
+    if (window.addEventListener) {
+      // Listen for potential HotReload events
+      window.addEventListener('beforeunload', () => {
+        console.log('🔄 Page unload detected - potential HotReload');
+      });
+      
+      // Listen for page visibility changes (HotReload might cause these)
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && !this.isLoading) {
+          console.log('🔄 Page became visible - checking for HotReload state reset');
+          setTimeout(() => {
+            this.checkAndSyncURLState();
+          }, 100);
+        }
+      });
+      
+      // Listen for focus events (HotReload might cause these)
+      window.addEventListener('focus', () => {
+        if (!this.isLoading) {
+          console.log('🔄 Window focus detected - checking for HotReload state reset');
+          setTimeout(() => {
+            this.checkAndSyncURLState();
+          }, 100);
+        }
+      });
+    }
   }
   
   /**
    * Handle retailer filter checkbox changes
    */
-  handleRetailerFilterChange(event) {
-    const checkbox = event.target;
+  handleRetailerFilterChange(checkbox) {
+    console.log('=== HANDLING RETAILER FILTER CHANGE ===');
     const retailerKey = checkbox.value;
     
     console.log('Retailer filter changed:', retailerKey, checkbox.checked);
-    
-    // Update active filters
-    if (!this.activeFilters.has('retailer')) {
-      this.activeFilters.set('retailer', []);
-    }
-    
-    const activeRetailers = this.activeFilters.get('retailer');
+    console.log('Current active filters before change:', this.activeFilters);
     
     if (checkbox.checked) {
-      if (!activeRetailers.includes(retailerKey)) {
-        activeRetailers.push(retailerKey);
-      }
-      checkbox.closest('.facet-checkbox').classList.add('active');
-    } else {
-      const index = activeRetailers.indexOf(retailerKey);
-      if (index > -1) {
-        activeRetailers.splice(index, 1);
-      }
-      checkbox.closest('.facet-checkbox').classList.remove('active');
-    }
-    
-    // Clean up empty arrays
-    if (activeRetailers.length === 0) {
-      this.activeFilters.delete('retailer');
-    }
-    
-    // Update UI and perform Ajax request
-    this.updateRetailerFilterState();
-    this.syncMobileFilters();
-    this.performAjaxFilter();
-  }
-  
-  /**
-   * Handle mobile retailer filter checkbox changes
-   */
-  handleMobileRetailerFilterChange(event) {
-    const checkbox = event.target;
-    const retailerKey = checkbox.value;
-    
-    console.log('Mobile retailer filter changed:', retailerKey, checkbox.checked);
-    
-    // Update active filters
-    if (!this.activeFilters.has('retailer')) {
-      this.activeFilters.set('retailer', []);
-    }
-    
-    const activeRetailers = this.activeFilters.get('retailer');
-    
-    if (checkbox.checked) {
-      if (!activeRetailers.includes(retailerKey)) {
-        activeRetailers.push(retailerKey);
-      }
-      checkbox.closest('.mobile-facets__item').classList.add('active');
-    } else {
-      const index = activeRetailers.indexOf(retailerKey);
-      if (index > -1) {
-        activeRetailers.splice(index, 1);
-      }
-      checkbox.closest('.mobile-facets__item').classList.remove('active');
-    }
-    
-    // Clean up empty arrays
-    if (activeRetailers.length === 0) {
-      this.activeFilters.delete('retailer');
-    }
-    
-    // Update UI and sync with desktop
-    this.updateRetailerFilterState();
-    this.syncDesktopFilters();
-    this.performAjaxFilter();
-  }
-  
-  /**
-   * Sync mobile filters with desktop state
-   */
-  syncMobileFilters() {
-    const retailerFilters = this.activeFilters.get('retailer') || [];
-    
-    // Update mobile checkboxes to match desktop state
-    const mobileCheckboxes = document.querySelectorAll('#mobile-retailer-options input[type="checkbox"]');
-    mobileCheckboxes.forEach(checkbox => {
-      const isActive = retailerFilters.includes(checkbox.value);
-      checkbox.checked = isActive;
-      
-      if (isActive) {
-        checkbox.closest('.mobile-facets__item').classList.add('active');
+      // Add filter if not already present (allow multiple selection)
+      if (!this.activeFilters.includes(retailerKey)) {
+        console.log('Adding filter:', retailerKey);
+        this.activeFilters.push(retailerKey);
       } else {
-        checkbox.closest('.mobile-facets__item').classList.remove('active');
+        console.log('Filter already active:', retailerKey);
       }
-    });
-  }
-  
-  /**
-   * Sync desktop filters with mobile state
-   */
-  syncDesktopFilters() {
-    const retailerFilters = this.activeFilters.get('retailer') || [];
-    
-    // Update desktop checkboxes to match mobile state
-    const desktopCheckboxes = document.querySelectorAll('#Details-retailer-filter input[type="checkbox"]');
-    desktopCheckboxes.forEach(checkbox => {
-      const isActive = retailerFilters.includes(checkbox.value);
-      checkbox.checked = isActive;
-      
-      if (isActive) {
-        checkbox.closest('.facet-checkbox').classList.add('active');
+    } else {
+      // Remove this filter
+      console.log('Removing filter:', retailerKey);
+      const index = this.activeFilters.indexOf(retailerKey);
+      if (index > -1) {
+        this.activeFilters.splice(index, 1);
+        console.log('Filter removed at index:', index);
       } else {
-        checkbox.closest('.facet-checkbox').classList.remove('active');
+        console.log('Filter not found in active filters');
       }
-    });
+    }
+    
+    console.log('Active filters after change:', this.activeFilters);
+    
+    // Update UI and perform filtering with a small delay to ensure DOM is ready
+    console.log('Calling updateUI...');
+    setTimeout(() => {
+      this.updateUI();
+      console.log('Calling performAjaxFilter...');
+      this.performAjaxFilter();
+    }, 50);
+    
+    console.log('=== END HANDLING RETAILER FILTER CHANGE ===');
   }
   
   /**
-   * Update retailer filter UI state
+   * Update the UI (button text and pills)
    */
-  updateRetailerFilterState() {
-    const retailerFilters = this.activeFilters.get('retailer') || [];
-    const count = retailerFilters.length;
+  updateUI() {
+    console.log('=== UPDATING UI ===');
+    const count = this.activeFilters.length;
+    console.log('Updating UI with count:', count);
+    console.log('Active filters:', this.activeFilters);
     
-    // Update the summary label
-    const summary = document.querySelector('#Details-retailer-filter summary');
+    // Update filter button text
+    console.log('Calling updateFilterButton...');
+    this.updateFilterButton(count);
+    
+    // Update filter pills
+    console.log('Calling updateFilterPills...');
+    this.updateFilterPills();
+    
+    // Update checkbox states
+    console.log('Calling updateCheckboxStates...');
+    this.updateCheckboxStates();
+    
+    console.log('=== END UPDATING UI ===');
+  }
+  
+  /**
+   * Update the filter button text
+   */
+  updateFilterButton(count) {
+    console.log('=== UPDATING FILTER BUTTON ===');
+    console.log('Updating filter button with count:', count);
+    
+    // Try multiple selectors for the summary label
+    let summaryLabel = document.querySelector('#Details-retailer-filter .facets__summary-label');
+    if (!summaryLabel) {
+      summaryLabel = document.querySelector('[id="Details-retailer-filter"] .facets__summary-label');
+    }
+    if (!summaryLabel) {
+      summaryLabel = document.querySelector('details[data-index="retailer"] .facets__summary-label');
+    }
+    
+    console.log('Summary label element:', summaryLabel);
+    
+    if (summaryLabel) {
+      let selectedSpan = summaryLabel.querySelector('.facets__selected');
+      console.log('Existing selected span:', selectedSpan);
+      
+      if (!selectedSpan) {
+        console.log('Creating new selected span');
+        selectedSpan = document.createElement('span');
+        selectedSpan.className = 'facets__selected';
+        summaryLabel.appendChild(selectedSpan);
+        console.log('New selected span created and appended');
+      }
+      
+      const newText = `(${count})`;
+      selectedSpan.textContent = newText;
+      selectedSpan.classList.toggle('hidden', count === 0);
+      console.log('Updated summary label text:', newText);
+      console.log('Hidden class applied:', count === 0);
+    } else {
+      console.error('Summary label not found!');
+    }
+    
+    // Try multiple selectors for the header
+    let headerSelected = document.querySelector('#Details-retailer-filter .facets__header .facets__selected');
+    if (!headerSelected) {
+      headerSelected = document.querySelector('[id="Details-retailer-filter"] .facets__header .facets__selected');
+    }
+    if (!headerSelected) {
+      headerSelected = document.querySelector('details[data-index="retailer"] .facets__header .facets__selected');
+    }
+    
+    console.log('Header selected element:', headerSelected);
+    
+    if (headerSelected) {
+      const headerText = `${count} filter${count !== 1 ? 's' : ''} selected`;
+      headerSelected.textContent = headerText;
+      console.log('Updated header text:', headerText);
+    } else {
+      console.error('Header selected not found!');
+    }
+    
+    // Try multiple selectors for the summary
+    let summary = document.querySelector('#Details-retailer-filter summary');
+    if (!summary) {
+      summary = document.querySelector('[id="Details-retailer-filter"] summary');
+    }
+    if (!summary) {
+      summary = document.querySelector('details[data-index="retailer"] summary');
+    }
+    
+    console.log('Summary element for aria-label:', summary);
+    
     if (summary) {
-      const selectedSpan = summary.querySelector('.facets__selected');
+      const ariaLabel = `Retailer (${count} filter${count !== 1 ? 's' : ''} selected)`;
+      summary.setAttribute('aria-label', ariaLabel);
+      console.log('Updated aria-label:', ariaLabel);
+    } else {
+      console.error('Summary element not found!');
+    }
+    
+    console.log('=== END UPDATING FILTER BUTTON ===');
+  }
+  
+  /**
+   * Update filter pills
+   */
+  updateFilterPills() {
+    console.log('=== UPDATING FILTER PILLS ===');
+    console.log('Active filters for pills:', this.activeFilters);
+    
+    // Try multiple selectors for the pills container
+    let pillsContainer = document.querySelector('#ajax-filter-pills');
+    console.log('Pills container #ajax-filter-pills:', pillsContainer);
+    
+    if (!pillsContainer) {
+      // Try alternative selectors
+      pillsContainer = document.querySelector('.active-facets.active-facets-desktop');
+      console.log('Pills container .active-facets.active-facets-desktop:', pillsContainer);
       
-      if (selectedSpan) {
-        if (count > 0) {
-          selectedSpan.textContent = `(${count})`;
-          selectedSpan.classList.remove('hidden');
-          summary.setAttribute('aria-label', `Retailer (${count} filter${count > 1 ? 's' : ''} selected)`);
-        } else {
-          selectedSpan.textContent = '(0)';
-          selectedSpan.classList.add('hidden');
-          summary.setAttribute('aria-label', 'Retailer (0 filter selected)');
+      if (!pillsContainer) {
+        // Try to find any active-facets container
+        const allActiveFacets = document.querySelectorAll('.active-facets');
+        console.log('Found active-facets containers:', allActiveFacets.length);
+        
+        if (allActiveFacets.length > 0) {
+          // Use the first one that has the right ID or class
+          for (let i = 0; i < allActiveFacets.length; i++) {
+            const container = allActiveFacets[i];
+            if (container.id === 'ajax-filter-pills' || container.classList.contains('active-facets-desktop')) {
+              pillsContainer = container;
+              console.log('Found suitable container:', container);
+              break;
+            }
+          }
+          
+          // If still not found, use the first one
+          if (!pillsContainer && allActiveFacets.length > 0) {
+            pillsContainer = allActiveFacets[0];
+            console.log('Using first available container:', pillsContainer);
+          }
+        }
+        
+        if (!pillsContainer) {
+          console.error('No filter pills container found!');
+          console.log('Available elements with active-facets class:');
+          allActiveFacets.forEach((el, index) => {
+            console.log(`Element ${index}:`, el, el.id, el.className);
+          });
+          return;
         }
       }
     }
     
-    console.log('Retailer filter state updated:', count, 'filters active');
+    console.log('Using pills container:', pillsContainer);
+    
+    // Clear existing pills (but keep native hidden ones)
+    const existingPills = pillsContainer.querySelectorAll('.ajax-filter-pill');
+    console.log('Existing pills to remove:', existingPills.length);
+    existingPills.forEach(pill => pill.remove());
+    
+    // Remove existing "Remove all" button
+    const existingRemoveAll = pillsContainer.querySelector('#ajax-remove-all');
+    if (existingRemoveAll) {
+      console.log('Removing existing remove all button');
+      existingRemoveAll.remove();
+    }
+    
+    // Add pills for active filters
+    console.log('Creating pills for active filters:', this.activeFilters);
+    this.activeFilters.forEach((retailer, index) => {
+      console.log(`Creating pill ${index} for retailer:`, retailer);
+      const pill = this.createFilterPill(retailer);
+      pillsContainer.appendChild(pill);
+      console.log('Pill created and appended:', pill);
+    });
+    
+    // Add "Remove all" button if there are active filters
+    if (this.activeFilters.length > 0) {
+      console.log('Creating remove all button');
+      const removeAllButton = this.createRemoveAllButton();
+      pillsContainer.appendChild(removeAllButton);
+      console.log('Remove all button created and appended:', removeAllButton);
+    }
+    
+    console.log(`Filter pills updated: ${this.activeFilters.length} pills`);
+    console.log('Final pills container content:', pillsContainer.innerHTML);
+    console.log('=== END UPDATING FILTER PILLS ===');
   }
   
   /**
-   * Perform Ajax filtering request
+   * Create a filter pill element
+   */
+  createFilterPill(retailer) {
+    console.log('Creating filter pill for:', retailer);
+    const pill = document.createElement('div');
+    pill.className = 'ajax-filter-pill';
+    pill.innerHTML = `
+      <a href="#" class="active-facets__button active-facets__button--light" data-retailer="${retailer}">
+        <span class="active-facets__button-inner button button--tertiary">
+          Retailer: ${retailer}
+          <span class="svg-wrapper">
+            <svg viewBox="0 0 12 12" class="icon icon-close-small" aria-hidden="true" focusable="false">
+              <path d="m8.224 6 2.88-2.88a.75.75 0 1 0-1.061-1.061L7.163 4.939 4.283 2.059a.75.75 0 0 0-1.061 1.061L6.102 6 3.222 8.88a.75.75 0 1 0 1.061 1.061L7.163 7.061l2.88 2.88a.75.75 0 1 0 1.061-1.061L8.224 6Z" fill="currentColor"></path>
+            </svg>
+          </span>
+          <span class="visually-hidden">Remove ${retailer} filter</span>
+        </span>
+      </a>
+    `;
+    
+    // Add click handler
+    const link = pill.querySelector('a');
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Filter pill clicked for:', retailer);
+      this.removeFilter(retailer);
+    });
+    
+    console.log('Filter pill created:', pill);
+    return pill;
+  }
+  
+  /**
+   * Create remove all button
+   */
+  createRemoveAllButton() {
+    console.log('Creating remove all button');
+    const button = document.createElement('div');
+    button.id = 'ajax-remove-all';
+    button.className = 'active-facets__button-wrapper';
+    button.innerHTML = `
+      <a href="#" class="active-facets__button-remove underlined-link">
+        <span>Remove all</span>
+      </a>
+    `;
+    
+    // Add click handler
+    const link = button.querySelector('a');
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Remove all button clicked');
+      this.clearAllFilters();
+    });
+    
+    console.log('Remove all button created:', button);
+    return button;
+  }
+  
+  /**
+   * Remove a specific filter
+   */
+  removeFilter(retailer) {
+    console.log('=== REMOVING FILTER ===');
+    console.log('Removing filter:', retailer);
+    const index = this.activeFilters.indexOf(retailer);
+    if (index > -1) {
+      this.activeFilters.splice(index, 1);
+      console.log('Filter removed, new active filters:', this.activeFilters);
+    } else {
+      console.log('Filter not found in active filters');
+    }
+    
+    this.updateUI();
+    this.performAjaxFilter();
+    console.log('=== END REMOVING FILTER ===');
+  }
+  
+  /**
+   * Clear all filters
+   */
+  clearAllFilters() {
+    console.log('=== CLEARING ALL FILTERS ===');
+    console.log('Clearing all filters, current:', this.activeFilters);
+    this.activeFilters = [];
+    console.log('All filters cleared');
+    this.updateUI();
+    this.performAjaxFilter();
+    console.log('=== END CLEARING ALL FILTERS ===');
+  }
+  
+  /**
+   * Update checkbox states
+   */
+  updateCheckboxStates() {
+    console.log('=== UPDATING CHECKBOX STATES ===');
+    const checkboxes = document.querySelectorAll('input[name="filter.p.tag"]');
+    console.log('Found checkboxes for state update:', checkboxes.length);
+    
+    checkboxes.forEach((checkbox, index) => {
+      const isActive = this.activeFilters.includes(checkbox.value);
+      const wasChecked = checkbox.checked;
+      checkbox.checked = isActive;
+      
+      console.log(`Checkbox ${index} (${checkbox.value}): was ${wasChecked}, now ${isActive}`);
+      
+      // Update visual state
+      const label = checkbox.closest('.facet-checkbox');
+      if (label) {
+        label.classList.toggle('active', isActive);
+        console.log(`Label for ${checkbox.value} active class:`, isActive);
+      }
+    });
+    console.log('=== END UPDATING CHECKBOX STATES ===');
+  }
+  
+  /**
+   * Perform Ajax filtering request with OR logic for multiple retailers
    */
   async performAjaxFilter() {
-    if (this.isLoading) return;
+    console.log('=== PERFORMING AJAX FILTER WITH OR LOGIC ===');
+    if (this.isLoading) {
+      console.log('Already loading, skipping');
+      return;
+    }
     
     this.isLoading = true;
     this.showLoadingState();
     
     try {
-      const filterParams = [];
+      let combinedProducts = [];
+      let totalProductCount = 0;
+      let combinedPagination = null;
       
-      // Add retailer filters
-      const retailerFilters = this.activeFilters.get('retailer');
-      if (retailerFilters && retailerFilters.length > 0) {
-        retailerFilters.forEach(retailer => {
-          filterParams.push(`filter.p.tag=${retailer}`);
+      if (this.activeFilters.length === 0) {
+        // No filters - show all products
+        console.log('No filters active, showing all products');
+        const response = await this.fetchFilteredProducts();
+        const result = this.parseFilterResponse(response);
+        this.updatePageContent(result.html, result.productCount, result.hasPagination);
+        this.updateURL('/collections/all');
+        this.hideLoadingState();
+      } else if (this.activeFilters.length === 1) {
+        // Single filter - use direct request for efficiency
+        const retailer = this.activeFilters[0];
+        console.log('Single filter active, using direct request:', retailer);
+        console.log('Fetching products for retailer:', retailer);
+        
+        const response = await this.fetchFilteredProducts(retailer);
+        const result = this.parseFilterResponse(response);
+        this.updatePageContent(result.html, result.productCount, result.hasPagination);
+        this.updateURL(this.buildFilterURL());
+        this.hideLoadingState();
+      } else {
+        // Multiple filters - use OR logic with client-side merging
+        console.log('Multiple filters active, using OR logic:', this.activeFilters);
+        
+        // Fetch retailers in parallel for better performance
+        const fetchPromises = this.activeFilters.map(async (retailer) => {
+          console.log('Starting fetch for retailer:', retailer);
+          try {
+            const allProducts = await this.fetchAllProductsForRetailer(retailer);
+            console.log(`Completed fetch for ${retailer}: ${allProducts.products.length} products`);
+            return {
+              retailer: retailer,
+              products: allProducts.products,
+              totalCount: allProducts.totalCount
+            };
+          } catch (error) {
+            console.error(`Error fetching products for ${retailer}:`, error);
+            return {
+              retailer: retailer,
+              products: [],
+              totalCount: 0
+            };
+          }
         });
+        
+        console.log('Waiting for all retailers to complete...');
+        const responses = await Promise.all(fetchPromises);
+        console.log('Received responses for all retailers:', responses.length);
+        
+        // Process and combine all results
+        const seenProducts = new Set();
+        
+        for (const response of responses) {
+          console.log(`Processing results for ${response.retailer}: ${response.products.length} products`);
+          totalProductCount += response.totalCount;
+          
+          response.products.forEach(product => {
+            // Use product URL as unique identifier to avoid duplicates
+            const productId = product.url || product.href || product.id;
+            if (productId && !seenProducts.has(productId)) {
+              seenProducts.add(productId);
+              combinedProducts.push(product);
+            }
+          });
+        }
+        
+        console.log('Combined unique products:', combinedProducts.length);
+        console.log('Total product count from all retailers:', totalProductCount);
+        
+        // Update page content with merged results
+        this.updatePageContentWithMergedResults(combinedProducts, totalProductCount, false);
+        this.updateURL(this.buildFilterURL());
+        this.hideLoadingState();
       }
-      
-      // Get current sort parameter
-      const currentSort = new URLSearchParams(window.location.search).get('sort_by');
-      if (currentSort) {
-        filterParams.push(`sort_by=${currentSort}`);
-      }
-      
-      // Build filter URL
-      const filterUrl = `/collections/all${filterParams.length > 0 ? '?' + filterParams.join('&') : ''}`;
-      
-      console.log('Performing Ajax filter request:', filterUrl);
-      
-      // Update URL
-      window.history.pushState({}, '', filterUrl);
-      
-      // Fetch new content
-      const response = await fetch(`${filterUrl}&section_id=main-collection-product-grid`);
-      const html = await response.text();
-      
-      // Parse the response and update the product grid
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const newProductGrid = doc.querySelector('#product-grid');
-      const currentProductGrid = document.querySelector('#product-grid');
-      
-      if (newProductGrid && currentProductGrid) {
-        currentProductGrid.innerHTML = newProductGrid.innerHTML;
-      }
-      
-      console.log('Ajax filter request completed');
       
     } catch (error) {
-      console.error('Ajax filter error:', error);
+      console.error('Error in performAjaxFilter:', error);
+      this.hideLoadingState();
     } finally {
       this.isLoading = false;
-      this.hideLoadingState();
     }
+  }
+
+  /**
+   * Fetch ALL products for a specific retailer (all pages)
+   */
+  async fetchAllProductsForRetailer(retailer) {
+    console.log(`Fetching ALL products for retailer: ${retailer}`);
+    
+    let allProducts = [];
+    let currentPage = 1;
+    let hasMorePages = true;
+    let totalCount = 0;
+    const maxPages = 10; // Limit to 10 pages to prevent timeouts
+    
+    while (hasMorePages && currentPage <= maxPages) {
+      console.log(`Fetching page ${currentPage} for ${retailer}`);
+      
+      const url = `/collections/all?filter.p.tag=${encodeURIComponent(retailer)}&page=${currentPage}&section_id=main-collection-product-grid`;
+      console.log('Fetching from URL:', url);
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const html = await response.text();
+        const result = this.parseFilterResponse(html);
+        
+        if (currentPage === 1) {
+          totalCount = result.productCount; // Get total count from first page
+        }
+        
+        if (result.products && result.products.length > 0) {
+          allProducts = allProducts.concat(result.products);
+          console.log(`Page ${currentPage}: ${result.products.length} products, total so far: ${allProducts.length}`);
+          
+          // Check if there are more pages
+          hasMorePages = result.hasPagination && result.products.length > 0;
+          currentPage++;
+          
+          // If we've reached the max pages, use the total count for accurate display
+          if (currentPage > maxPages && hasMorePages) {
+            console.log(`Reached maximum page limit (${maxPages}), stopping. Total count will be: ${totalCount}`);
+            hasMorePages = false;
+          }
+        } else {
+          hasMorePages = false;
+        }
+      } catch (error) {
+        console.error(`Error fetching page ${currentPage} for ${retailer}:`, error);
+        hasMorePages = false;
+      }
+    }
+    
+    console.log(`Finished fetching products for ${retailer}: ${allProducts.length} products (total count: ${totalCount})`);
+    
+    return {
+      products: allProducts,
+      totalCount: totalCount
+    };
+  }
+  
+  /**
+   * Fetch filtered products for a specific retailer (or all products if no retailer)
+   */
+  async fetchFilteredProducts(retailer = null) {
+    const params = new URLSearchParams();
+    
+    if (retailer) {
+      params.append('filter.p.tag', retailer);
+      console.log('Fetching products for retailer:', retailer);
+    } else {
+      console.log('Fetching all products (no filter)');
+    }
+    
+    // Get current sort parameter
+    const currentSort = new URLSearchParams(window.location.search).get('sort_by');
+    if (currentSort) {
+      params.set('sort_by', currentSort);
+      console.log('Added sort parameter:', currentSort);
+    }
+    
+    // Build section URL for Ajax request
+    const sectionUrl = `/collections/all?${params.toString()}&section_id=main-collection-product-grid`;
+    console.log('Fetching from URL:', sectionUrl);
+    
+    const response = await fetch(sectionUrl);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.text();
+  }
+  
+  /**
+   * Parse filter response HTML and extract products, count, and pagination
+   */
+  parseFilterResponse(html) {
+    console.log('Parsing filter response, HTML length:', html.length);
+    
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Extract products
+    const productElements = doc.querySelectorAll('.card-wrapper, .product-card, [data-product-id], li[class*="grid__item"]');
+    const products = Array.from(productElements).map(element => {
+      // Extract product data
+      const productLink = element.querySelector('a[href*="/products/"]');
+      const productTitle = element.querySelector('.card__heading a, .product-title, h3 a');
+      const productPrice = element.querySelector('.price, .product-price');
+      
+      return {
+        element: element.outerHTML,
+        url: productLink ? productLink.getAttribute('href') : null,
+        handle: productLink ? productLink.getAttribute('href').split('/products/')[1]?.split('?')[0] : null,
+        title: productTitle ? productTitle.textContent.trim() : '',
+        price: productPrice ? productPrice.textContent.trim() : ''
+      };
+    });
+    
+    // Extract product count - try multiple selectors
+    let productCount = 0;
+    const productCountSelectors = [
+      '#ProductCountDesktop', 
+      '#ProductCount', 
+      '.collection-product-count',
+      'h2[class*="product"]',
+      '.collection__title',
+      '[data-product-count]',
+      'status h2',
+      '.facets__summary h2'
+    ];
+    
+    for (const selector of productCountSelectors) {
+      const element = doc.querySelector(selector);
+      if (element) {
+        const text = element.textContent.trim();
+        const match = text.match(/(\d+)/);
+        if (match) {
+          productCount = parseInt(match[1]);
+          console.log(`Found product count ${productCount} using selector: ${selector}`);
+          break;
+        }
+      }
+    }
+    
+    // Fallback to products length if no count found
+    if (productCount === 0) {
+      productCount = products.length;
+      console.log(`Using products length as count: ${productCount}`);
+    }
+    
+    // Extract pagination
+    const paginationElement = doc.querySelector('.pagination-wrapper, nav[aria-label="Pagination"], .pagination');
+    const hasPagination = !!paginationElement;
+    
+    console.log('Parsed response:', {
+      products: products.length,
+      productCount: productCount,
+      hasPagination: hasPagination
+    });
+    
+    return {
+      products,
+      productCount,
+      hasPagination,
+      html: html
+    };
+  }
+  
+  /**
+   * Build filter URL with unique parameters
+   */
+  buildFilterURL(baseURL = '/collections/all') {
+    console.log('Building filter URL with active filters:', this.activeFilters);
+    
+    const url = new URL(baseURL, window.location.origin);
+    
+    // Remove any existing filter parameters to avoid duplicates
+    url.searchParams.delete('filter.p.tag');
+    
+    // Add unique active filters
+    const uniqueFilters = [...new Set(this.activeFilters)];
+    uniqueFilters.forEach(filter => {
+      url.searchParams.append('filter.p.tag', filter);
+    });
+    
+    // Preserve existing sort parameters
+    const currentParams = new URLSearchParams(window.location.search);
+    if (currentParams.has('sort_by')) {
+      url.searchParams.set('sort_by', currentParams.get('sort_by'));
+    }
+    
+    const finalURL = url.pathname + url.search;
+    console.log('Built filter URL:', finalURL);
+    return finalURL;
+  }
+  
+  /**
+   * Update page content with merged results from multiple retailers
+   */
+  updatePageContentWithMergedResults(combinedProducts, totalCount, hasPagination) {
+    console.log('=== UPDATING PAGE WITH MERGED RESULTS ===');
+    console.log('Products to display:', combinedProducts.length);
+    console.log('Total count:', totalCount);
+    
+    try {
+      // Update product grid with combined products
+      const productGrid = document.querySelector('#product-grid, .collection, .grid--2-col-tablet, .grid--4-col-desktop, ul.grid');
+      if (productGrid && combinedProducts.length > 0) {
+        // Create combined HTML from all products
+        let combinedHTML = '';
+        combinedProducts.forEach(product => {
+          if (product && product.element) {
+            combinedHTML += product.element;
+          } else if (product && product.outerHTML) {
+            combinedHTML += product.outerHTML;
+          } else {
+            console.log('Invalid product element:', product);
+          }
+        });
+        
+        if (combinedHTML) {
+          productGrid.innerHTML = combinedHTML;
+          console.log('Product grid updated with merged results');
+        } else {
+          console.error('No valid product HTML generated');
+        }
+      } else if (combinedProducts.length === 0) {
+        // No products found
+        if (productGrid) {
+          productGrid.innerHTML = '<p>No products found matching your filters.</p>';
+        }
+      } else {
+        console.error('Product grid container not found');
+      }
+      
+      // Update product count displays with the TOTAL count from all retailers
+      this.updateProductCount(totalCount);
+      
+      // Remove pagination since we're showing all results
+      const paginationElement = document.querySelector('.pagination, nav[aria-label="Pagination"]');
+      if (paginationElement) {
+        paginationElement.style.display = 'none';
+        console.log('Pagination hidden for merged results');
+      }
+      
+      console.log('Page content updated successfully with merged results');
+      
+    } catch (error) {
+      console.error('Error updating page content with merged results:', error);
+    }
+    
+    console.log('=== END UPDATING PAGE WITH MERGED RESULTS ===');
+  }
+
+  /**
+   * Update product count displays
+   */
+  updateProductCount(count) {
+    console.log('Product count updated:', count + ' products');
+    
+    // Update main product count heading
+    const productCountHeading = document.querySelector('h2[class*="product"], .collection__title, [data-product-count]');
+    if (productCountHeading) {
+      productCountHeading.textContent = `${count} products`;
+      console.log('Main count heading updated:', count + ' products');
+    }
+    
+    // Update status elements
+    const statusElements = document.querySelectorAll('status, [role="status"], .facets__summary');
+    statusElements.forEach(element => {
+      if (element.textContent.includes('product')) {
+        element.textContent = `${count} products`;
+        console.log('Status element updated:', count + ' products');
+      }
+    });
   }
   
   /**
    * Show loading state
    */
   showLoadingState() {
-    const productGrid = document.querySelector('#product-grid');
+    console.log('=== SHOWING LOADING STATE ===');
+    const productGrid = document.querySelector('#product-grid, .collection');
+    console.log('Product grid found for loading state:', !!productGrid);
     if (productGrid) {
       productGrid.style.opacity = '0.5';
       productGrid.style.pointerEvents = 'none';
+      console.log('Loading state applied: opacity=0.5, pointerEvents=none');
+    } else {
+      console.error('Product grid not found for loading state!');
     }
     
-    // Show loading spinner if it exists
-    const loadingSpinner = document.querySelector('.loading-spinner, .loading-overlay');
-    if (loadingSpinner) {
-      loadingSpinner.style.display = 'block';
+    // CRITICAL FIX: Also manage Dawn's native loading overlay
+    const collectionContainer = document.querySelector('.collection');
+    console.log('Collection container found for loading class:', !!collectionContainer);
+    if (collectionContainer) {
+      collectionContainer.classList.add('loading');
+      console.log('Dawn loading class added to collection container');
+    } else {
+      console.error('Collection container not found for loading class!');
     }
+    
+    console.log('=== END SHOWING LOADING STATE ===');
   }
   
   /**
    * Hide loading state
    */
   hideLoadingState() {
-    const productGrid = document.querySelector('#product-grid');
+    console.log('=== HIDING LOADING STATE ===');
+    const productGrid = document.querySelector('#product-grid, .collection');
+    console.log('Product grid found for hiding loading state:', !!productGrid);
     if (productGrid) {
       productGrid.style.opacity = '1';
       productGrid.style.pointerEvents = 'auto';
+      console.log('Loading state removed: opacity=1, pointerEvents=auto');
+    } else {
+      console.error('Product grid not found for hiding loading state!');
     }
     
-    // Hide loading spinner
-    const loadingSpinner = document.querySelector('.loading-spinner, .loading-overlay');
-    if (loadingSpinner) {
-      loadingSpinner.style.display = 'none';
+    // CRITICAL FIX: Also manage Dawn's native loading overlay
+    const collectionContainer = document.querySelector('.collection');
+    console.log('Collection container found for removing loading class:', !!collectionContainer);
+    if (collectionContainer) {
+      collectionContainer.classList.remove('loading');
+      console.log('Dawn loading class removed from collection container');
+    } else {
+      console.error('Collection container not found for removing loading class!');
     }
+    
+    // ADDITIONAL FAILSAFE: Directly hide the loading overlay element
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    console.log('Loading overlay element found:', !!loadingOverlay);
+    if (loadingOverlay) {
+      loadingOverlay.style.display = 'none';
+      console.log('Loading overlay directly hidden with display: none');
+    } else {
+      console.log('No loading overlay element found to hide');
+    }
+    
+    console.log('=== END HIDING LOADING STATE ===');
   }
-  
+
   /**
-   * Handle sort dropdown changes
+   * Check and synchronize URL state if needed
    */
-  handleSortChange(event) {
-    const sortValue = event.target.value;
-    console.log('Sort changed to:', sortValue);
+  checkAndSyncURLState() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const retailerTags = urlParams.getAll('filter.p.tag').filter(tag => tag && tag.trim() !== '');
     
-    // Update URL with new sort parameter
-    const url = new URL(window.location);
-    url.searchParams.set('sort_by', sortValue);
-    
-    // Preserve existing filters
-    const retailerFilters = this.activeFilters.get('retailer');
-    if (retailerFilters && retailerFilters.length > 0) {
-      url.searchParams.delete('filter.p.tag');
-      retailerFilters.forEach(retailer => {
-        url.searchParams.append('filter.p.tag', retailer);
-      });
+    // If URL has filters but our state doesn't, update our state
+    if (retailerTags.length > 0 && this.activeFilters.length === 0) {
+      console.log('🔄 URL SYNC: Found filters in URL but not in state, updating...');
+      console.log('URL filters:', retailerTags);
+      console.log('Current state:', this.activeFilters);
+      
+      this.activeFilters = retailerTags;
+      this.updateUI();
+      
+      console.log('✅ State synchronized with URL');
+      return true;
     }
     
-    // Navigate to new URL
-    window.location.href = url.toString();
+    console.log('✅ URL state already synchronized');
+    return false;
   }
-  
+
   /**
-   * Clear mobile retailer filters
+   * Check if a tag is a valid retailer
    */
-  clearMobileRetailerFilters() {
-    console.log('Clearing mobile retailer filters');
+  isValidRetailer(tag) {
+    // Get all available retailer options from the checkboxes
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][name="filter.p.tag"]');
+    const validRetailers = Array.from(checkboxes).map(cb => cb.value);
+    return validRetailers.includes(tag);
+  }
+
+  /**
+   * Update page content with filtered results
+   */
+  updatePageContent(html, productCount, hasPagination) {
+    console.log('=== UPDATING PAGE CONTENT ===');
+    console.log('Product count:', productCount);
+    console.log('Has pagination:', hasPagination);
     
-    // Clear active filters
-    this.activeFilters.delete('retailer');
+    try {
+      // Update the main content area
+      const mainContent = document.querySelector('#product-grid, .collection, main .grid');
+      if (mainContent && html) {
+        // Parse the HTML response to extract the product grid
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newProductGrid = doc.querySelector('#product-grid, .collection, .grid');
+        
+        if (newProductGrid) {
+          mainContent.innerHTML = newProductGrid.innerHTML;
+          console.log('Product grid updated successfully');
+        } else {
+          console.error('Could not find product grid in response');
+        }
+      }
+      
+      // Update product count displays
+      this.updateProductCount(productCount);
+      
+      console.log('Page content updated successfully');
+    } catch (error) {
+      console.error('Error updating page content:', error);
+    }
     
-    // Clear mobile checkboxes
-    const mobileCheckboxes = document.querySelectorAll('#mobile-retailer-options input[type="checkbox"]');
-    mobileCheckboxes.forEach(checkbox => {
-      checkbox.checked = false;
-      checkbox.closest('.mobile-facets__item').classList.remove('active');
-    });
+    console.log('=== END UPDATING PAGE CONTENT ===');
+  }
+
+  /**
+   * Update URL in browser history
+   */
+  updateURL(url) {
+    console.log('=== UPDATING URL ===');
+    console.log('New URL:', url);
     
-    // Sync with desktop and update UI
-    this.syncDesktopFilters();
-    this.updateRetailerFilterState();
-    this.performAjaxFilter();
+    try {
+      if (url !== window.location.pathname + window.location.search) {
+        window.history.replaceState({}, '', url);
+        console.log('URL updated successfully');
+      } else {
+        console.log('URL already matches, no update needed');
+      }
+    } catch (error) {
+      console.error('Error updating URL:', error);
+    }
+    
+    console.log('=== END UPDATING URL ===');
   }
 }
 
 // Initialize the Ajax filters system
+console.log('Ajax Filters JavaScript loading...');
 new AjaxFilters(); 
+console.log('Ajax Filters JavaScript loaded successfully'); 
