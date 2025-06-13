@@ -226,41 +226,6 @@
   }
 }
 
-/* PHASE 1.7 - IMAGE BORDER STANDARDIZATION */
-/* RESTORED - Bringing back borders for comparison */
-
-/* Add subtle light grey borders around all product images for visual consistency */
-.card__media img,
-.card__media .media img {
-  border: 1px solid #e5e5e5 !important;
-  border-radius: 0 !important; /* Maintain sharp corners to match existing design */
-}
-
-/* Ensure the border doesn't affect image sizing or layout */
-.card__media,
-.card__media .media {
-  box-sizing: border-box !important;
-}
-
-/* Handle hover state images as well */
-.card__media .media--hover img {
-  border: 1px solid #e5e5e5 !important;
-}
-
-/* Ensure consistent border on both primary and secondary images */
-.card__media .media:first-child img,
-.card__media .media:last-child img {
-  border: 1px solid #e5e5e5 !important;
-}
-
-/* Mobile responsiveness - maintain borders on all screen sizes */
-@media screen and (max-width: 749px) {
-  .card__media img,
-  .card__media .media img {
-    border: 1px solid #e5e5e5 !important;
-  }
-}
-
 /* PHASE 1.8 - REMOVE COLLECTION HEADING SECTION */
 
 /* Hide the "Collection: Products" heading completely */
@@ -341,5 +306,72 @@ Maintain container dimensions to preserve grid standardization
 */
 
 /* END EXPERIMENTAL SECTION - OBJECT-FIT: CONTAIN DISABLED */
+
+/* AJAX-COMPATIBLE IMAGE STANDARDIZATION - Phase 1-1.8 Recovery */
+/* Enhanced for Phase B DOM replacement survival - January 12, 2025 */
+
+/* High-specificity selectors for Ajax-loaded content compatibility */
+.card__media img,
+.card__media .media img,
+#product-grid .card__media img,
+.collection .card__media img,
+.product-grid .card__media img,
+ul.grid .card__media img {
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 0 !important;
+  box-sizing: border-box !important;
+  object-fit: cover !important;
+}
+
+/* Hover state images - ensure consistency across all states */
+.card__media .media--hover img,
+#product-grid .card__media .media--hover img,
+.collection .card__media .media--hover img,
+.product-grid .card__media .media--hover img {
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Primary and secondary images - comprehensive coverage */
+.card__media .media:first-child img,
+.card__media .media:last-child img,
+#product-grid .card__media .media:first-child img,
+#product-grid .card__media .media:last-child img,
+.collection .card__media .media:first-child img,
+.collection .card__media .media:last-child img {
+  border: 1px solid #e5e5e5 !important;
+  border-radius: 0 !important;
+}
+
+/* Container adjustments to prevent layout shifts */
+.card__media,
+.card__media .media,
+#product-grid .card__media,
+.collection .card__media,
+.product-grid .card__media {
+  box-sizing: border-box !important;
+}
+
+/* Mobile responsiveness - maintain on all screen sizes */
+@media screen and (max-width: 749px) {
+  .card__media img,
+  .card__media .media img,
+  #product-grid .card__media img,
+  .collection .card__media img,
+  .product-grid .card__media img {
+    border: 1px solid #e5e5e5 !important;
+    border-radius: 0 !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Mobile hover states */
+  .card__media .media--hover img,
+  #product-grid .card__media .media--hover img,
+  .collection .card__media .media--hover img {
+    border: 1px solid #e5e5e5 !important;
+    border-radius: 0 !important;
+  }
+}
 
 /* END OF FILE - Duplicate rules removed */
