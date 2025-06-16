@@ -3,6 +3,8 @@
  * 
  * This system provides Ajax functionality for the retailer filter with custom filter pills.
  * Enhanced with comprehensive debugging and error handling.
+ * 
+ * UPDATED: Enhanced image size standardization for Issue #2 resolution
  */
 
 class AjaxFilters {
@@ -1015,87 +1017,63 @@ class AjaxFilters {
     console.log('Total count:', totalCount);
     
     try {
-      // Find the product grid container
-      const productGrid = document.querySelector('#product-grid, .collection, .grid--2-col-tablet, .grid--4-col-desktop, ul.grid');
+      // DAWN ARCHITECTURE PRESERVATION: Find the main product grid container
+      const productGrid = document.querySelector('#product-grid');
       if (productGrid && combinedProducts.length > 0) {
         
-        // PHASE B FIX: Preserve Dawn's grid structure
-        console.log('=== PRESERVING GRID STRUCTURE ===');
+        console.log('=== PRESERVING DAWN GRID STRUCTURE ===');
+        console.log('Grid classes before update:', productGrid.className);
         
-        // Check if the current grid is a UL element (Dawn's standard structure)
-        const isULGrid = productGrid.tagName.toLowerCase() === 'ul';
-        console.log('Grid is UL element:', isULGrid);
-        console.log('Grid classes:', productGrid.className);
+        // Clear existing items while preserving the ul.grid container structure
+        productGrid.innerHTML = '';
         
-        // Create combined HTML from all products, ensuring proper grid item structure
-        let combinedHTML = '';
+        // Create proper Dawn grid items from combined products
         combinedProducts.forEach((product, index) => {
           if (product && product.element) {
-            let productHTML = product.element;
+            // Parse the product HTML to extract the grid item
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = product.element;
             
-            // If the product element is already a proper grid item (li), use it as-is
-            if (productHTML.trim().startsWith('<li') && productHTML.includes('grid__item')) {
-              combinedHTML += productHTML;
-              console.log(`Product ${index + 1}: Already proper grid item`);
-            } 
-            // If it's not a proper grid item, wrap it in the correct structure
-            else {
-              // Extract the inner content if it's wrapped in other elements
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = productHTML;
+            // Look for existing grid item or create one
+            let gridItem = tempDiv.querySelector('li.grid__item');
+            if (!gridItem) {
+              // Create a proper Dawn grid item structure
+              gridItem = document.createElement('li');
+              gridItem.className = 'grid__item scroll-trigger animate--slide-in';
+              gridItem.setAttribute('data-cascade', '');
+              gridItem.style.setProperty('--animation-order', index + 1);
               
-              // Look for the actual product card content
-              const cardWrapper = tempDiv.querySelector('.card-wrapper, .card, [class*="card"]');
-              if (cardWrapper) {
-                combinedHTML += `<li class="grid__item scroll-trigger animate--slide-in" data-cascade>${cardWrapper.outerHTML}</li>`;
-                console.log(`Product ${index + 1}: Wrapped in grid item structure`);
-              } else {
-                // Fallback: wrap the entire content
-                combinedHTML += `<li class="grid__item scroll-trigger animate--slide-in" data-cascade>${productHTML}</li>`;
-                console.log(`Product ${index + 1}: Fallback wrapping applied`);
+              // Move the product content into the grid item
+              const productContent = tempDiv.firstElementChild;
+              if (productContent) {
+                gridItem.appendChild(productContent);
               }
             }
-          } else if (product && product.outerHTML) {
-            // Handle case where product has outerHTML property
-            let productHTML = product.outerHTML;
-            if (productHTML.trim().startsWith('<li') && productHTML.includes('grid__item')) {
-              combinedHTML += productHTML;
-            } else {
-              combinedHTML += `<li class="grid__item scroll-trigger animate--slide-in" data-cascade>${productHTML}</li>`;
-            }
-          } else {
-            console.log('Invalid product element:', product);
+            
+            // CRITICAL: Preserve Dawn's image size standardization
+            // Find all card elements that should have the --ratio-percent property
+            const cardElements = gridItem.querySelectorAll('.card, .card__inner');
+            cardElements.forEach(cardEl => {
+              // Ensure portrait ratio is applied (0.8 ratio = 125% height)
+              if (!cardEl.style.getPropertyValue('--ratio-percent')) {
+                cardEl.style.setProperty('--ratio-percent', '125%');
+                console.log(`Applied portrait ratio to merged product ${index + 1}`);
+              }
+            });
+            
+            // Append the properly structured grid item
+            productGrid.appendChild(gridItem);
+            console.log(`Product ${index + 1}: Added with Dawn grid structure and size standardization`);
           }
         });
         
-        if (combinedHTML) {
-          // Ensure the grid container has the correct classes
-          if (isULGrid) {
-            // For UL grids, make sure it has the proper Dawn grid classes
-            if (!productGrid.classList.contains('grid')) {
-              productGrid.classList.add('grid');
-            }
-            if (!productGrid.classList.contains('product-grid')) {
-              productGrid.classList.add('product-grid');
-            }
-            if (!productGrid.classList.contains('grid--2-col-tablet-down')) {
-              productGrid.classList.add('grid--2-col-tablet-down');
-            }
-            if (!productGrid.classList.contains('grid--4-col-desktop')) {
-              productGrid.classList.add('grid--4-col-desktop');
-            }
-          }
-          
-          // Update the grid content
-          productGrid.innerHTML = combinedHTML;
-          console.log('Product grid updated with merged results and preserved grid structure');
-          console.log('Final grid classes:', productGrid.className);
-          
-        } else {
-          console.error('No valid product HTML generated');
-        }
+        console.log('✅ Merged results updated while preserving Dawn architecture');
+        console.log('✅ Dawn grid classes maintained:', productGrid.className);
+        console.log('✅ Image size standardization preserved for all merged products');
+        
       } else if (combinedProducts.length === 0) {
-        // No products found
+        // No products found - preserve grid structure
+        const productGrid = document.querySelector('#product-grid');
         if (productGrid) {
           productGrid.innerHTML = '<li class="grid__item"><p>No products found matching your filters.</p></li>';
         }
@@ -1113,15 +1091,15 @@ class AjaxFilters {
         console.log('Pagination hidden for merged results');
       }
       
-      // Apply comprehensive image standardization after merged content update
+      // Apply comprehensive image standardization after content update
+      // Delay to ensure DOM is fully updated with preserved structure
       setTimeout(() => {
         this.applyImageStandardization();
       }, 150);
       
-      console.log(`✅ Merged results updated successfully: ${totalCount} products with image standardization`);
-      
+      console.log('Merged results page content updated successfully');
     } catch (error) {
-      console.error('Error updating page content with merged results:', error);
+      console.error('Error updating merged results:', error);
     }
     
     console.log('=== END UPDATING PAGE WITH MERGED RESULTS ===');
@@ -1259,31 +1237,61 @@ class AjaxFilters {
     console.log('Has pagination:', hasPagination);
     
     try {
-      // Update the main content area
-      const mainContent = document.querySelector('#product-grid, .collection, main .grid');
+      // DAWN ARCHITECTURE PRESERVATION: Find the main product grid container
+      const mainContent = document.querySelector('#product-grid');
       if (mainContent && html) {
-        // Parse the HTML response to extract the product grid
+        // Parse the HTML response to extract the new product items
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        const newProductGrid = doc.querySelector('#product-grid, .collection, .grid');
+        const newProductGrid = doc.querySelector('#product-grid');
         
         if (newProductGrid) {
-          mainContent.innerHTML = newProductGrid.innerHTML;
-          console.log('Product grid updated successfully');
+          const newItems = newProductGrid.querySelectorAll('li.grid__item');
+          
+          console.log(`Found ${newItems.length} new product items to insert`);
+          console.log('Preserving Dawn grid classes:', mainContent.className);
+          
+          // Clear existing items while preserving the ul.grid container
+          mainContent.innerHTML = '';
+          
+          // Insert new items while maintaining Dawn's structure AND size standardization
+          newItems.forEach(item => {
+            const clonedItem = item.cloneNode(true);
+            
+            // CRITICAL: Preserve Dawn's image size standardization
+            // Find all card elements that should have the --ratio-percent property
+            const cardElements = clonedItem.querySelectorAll('.card, .card__inner');
+            cardElements.forEach(cardEl => {
+              // Ensure portrait ratio is applied (0.8 ratio = 125% height)
+              if (!cardEl.style.getPropertyValue('--ratio-percent')) {
+                cardEl.style.setProperty('--ratio-percent', '125%');
+                console.log('Applied portrait ratio to card element');
+              }
+            });
+            
+            mainContent.appendChild(clonedItem);
+          });
+          
+          console.log('✅ Product grid updated while preserving Dawn architecture');
+          console.log('✅ Dawn grid classes maintained:', mainContent.className);
+          console.log('✅ Image size standardization preserved');
         } else {
           console.error('Could not find product grid in response');
         }
+      } else {
+        console.error('Main product grid container not found');
       }
       
       // Update product count displays
       this.updateProductCount(productCount);
       
       // Apply comprehensive image standardization after content update
+      // Delay to ensure DOM is fully updated with preserved structure
       setTimeout(() => {
         this.applyImageStandardization();
       }, 150);
       
-      console.log('Page content updated successfully with image standardization');
+      console.log('Page content updated successfully with Dawn architecture preservation');
     } catch (error) {
       console.error('Error updating page content:', error);
     }
@@ -1352,6 +1360,21 @@ class AjaxFilters {
           img.style.boxSizing = 'border-box';
           img.style.objectFit = 'cover';
           
+          // CRITICAL: Apply size standardization (portrait ratio)
+          // Find the parent card element and apply --ratio-percent
+          const cardElement = img.closest('.card, .card__inner, .card-wrapper');
+          if (cardElement) {
+            cardElement.style.setProperty('--ratio-percent', '125%');
+            console.log(`Applied portrait ratio to card element for image ${index + 1}`);
+          }
+          
+          // Also apply to the media container
+          const mediaElement = img.closest('.card__media, .media');
+          if (mediaElement) {
+            mediaElement.style.setProperty('--ratio-percent', '125%');
+            console.log(`Applied portrait ratio to media element for image ${index + 1}`);
+          }
+          
           // Ensure the image loads properly
           if (!img.complete) {
             img.addEventListener('load', () => {
@@ -1359,6 +1382,16 @@ class AjaxFilters {
               img.style.borderRadius = '0';
               img.style.boxSizing = 'border-box';
               img.style.objectFit = 'cover';
+              
+              // Reapply size standardization on load
+              const cardEl = img.closest('.card, .card__inner, .card-wrapper');
+              if (cardEl) {
+                cardEl.style.setProperty('--ratio-percent', '125%');
+              }
+              const mediaEl = img.closest('.card__media, .media');
+              if (mediaEl) {
+                mediaEl.style.setProperty('--ratio-percent', '125%');
+              }
             });
           }
           
@@ -1373,6 +1406,17 @@ class AjaxFilters {
         img.style.borderRadius = '0';
         img.style.boxSizing = 'border-box';
         img.style.objectFit = 'cover';
+        
+        // Apply size standardization to hover images too
+        const cardElement = img.closest('.card, .card__inner, .card-wrapper');
+        if (cardElement) {
+          cardElement.style.setProperty('--ratio-percent', '125%');
+        }
+        const mediaElement = img.closest('.card__media, .media');
+        if (mediaElement) {
+          mediaElement.style.setProperty('--ratio-percent', '125%');
+        }
+        
         totalImagesProcessed++;
       });
       
@@ -1380,10 +1424,15 @@ class AjaxFilters {
       const mediaContainers = document.querySelectorAll('.card__media, .card__media .media');
       mediaContainers.forEach(container => {
         container.style.boxSizing = 'border-box';
+        // Ensure portrait ratio is applied to all media containers
+        if (!container.style.getPropertyValue('--ratio-percent')) {
+          container.style.setProperty('--ratio-percent', '125%');
+        }
       });
       
       console.log(`✅ Image standardization applied to ${totalImagesProcessed} images`);
       console.log(`✅ Container adjustments applied to ${mediaContainers.length} containers`);
+      console.log(`✅ Portrait ratio (125%) applied to all images and containers`);
       
     } catch (error) {
       console.error('Error applying image standardization:', error);
