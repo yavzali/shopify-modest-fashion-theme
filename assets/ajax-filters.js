@@ -94,33 +94,30 @@ class AjaxFilters {
    * Perform the actual initialization
    */
   performInitialization() {
-    console.log('AjaxFilters: Performing initialization...');
+    console.log('=== PERFORMING INITIALIZATION ===');
     
-    // Debug: Check if key elements exist
-    this.debugElementExistence();
+    // CRITICAL: Force cleanup any stuck loading states first
+    this.forceCleanupLoadingStates();
     
-    // Set up event listeners
-    this.setupEventListeners();
-    
-    // Update filter state from URL on page load
+    // Initialize filter state from URL
     this.updateFilterStateFromURL();
     
-    // Set up aggressive URL monitoring for HotReload interference
+    // Setup event listeners
+    this.setupEventListeners();
+    
+    // Update UI to reflect current state
+    this.updateUI();
+    
+    // Setup periodic URL checking for navigation events
     this.setupPeriodicURLCheck();
     
-    // Add additional delayed URL checks to handle HotReload timing issues
-    setTimeout(() => {
-      console.log('🕐 DELAYED URL CHECK (5s): Checking for missed URL parameters...');
-      this.checkAndSyncURLState();
-    }, 5000);
+    // Apply comprehensive image standardization
+    this.applyImageStandardization();
     
-    setTimeout(() => {
-      console.log('🕐 DELAYED URL CHECK (10s): Final check for missed URL parameters...');
-      this.checkAndSyncURLState();
-    }, 10000);
+    // Setup observer for dynamic content
+    this.setupImageStandardizationObserver();
     
-    this.initialized = true;
-    console.log('AjaxFilters: Initialization complete');
+    console.log('=== INITIALIZATION COMPLETE ===');
   }
 
   /**
@@ -1481,7 +1478,10 @@ class AjaxFilters {
       'ul[class*="product-grid"]',
       'ul[class*="grid"]',
       '.collection ul.grid',
-      '#main-collection-product-grid ul.grid'
+      '#main-collection-product-grid ul.grid',
+      'ul.grid', // Added broader selector
+      '.product-grid', // Added class-only selector
+      '.grid' // Added most generic selector
     ];
     
     let productGrid = null;
@@ -1494,28 +1494,69 @@ class AjaxFilters {
     }
     
     if (productGrid) {
+      // CRITICAL FIX: Ensure all loading-related styles are completely removed
       productGrid.style.opacity = '1';
       productGrid.style.pointerEvents = '';
       productGrid.style.display = '';
+      productGrid.style.filter = ''; // Remove any filter effects
+      productGrid.style.visibility = 'visible';
+      
+      // ENHANCED: Also remove loading state from all child elements
+      const gridItems = productGrid.querySelectorAll('li, .grid__item, .card-wrapper');
+      gridItems.forEach(item => {
+        item.style.opacity = '1';
+        item.style.filter = '';
+        item.style.visibility = 'visible';
+      });
+      
       console.log('✅ Loading state removed: opacity=1, pointerEvents restored, display restored');
     } else {
       console.error('❌ Product grid not found for hiding loading state!');
     }
     
-    // Remove Dawn's native loading overlay
-    const collectionContainer = document.querySelector('.collection, #main-collection-product-grid, main .shopify-section');
-    if (collectionContainer) {
-      collectionContainer.classList.remove('loading');
-      console.log('✅ Dawn loading class removed from collection container');
-    } else {
-      console.error('❌ Collection container not found for removing loading class!');
-    }
+    // ENHANCED: Remove loading state from ALL possible containers
+    const containerSelectors = [
+      '.collection', 
+      '#main-collection-product-grid', 
+      'main .shopify-section',
+      '.main-content',
+      '#MainContent',
+      'main'
+    ];
     
-    // Remove any loading indicators
-    const loadingIndicators = document.querySelectorAll('.loading-indicator, .spinner, [data-loading]');
-    loadingIndicators.forEach(indicator => {
-      indicator.remove();
+    containerSelectors.forEach(selector => {
+      const container = document.querySelector(selector);
+      if (container) {
+        container.classList.remove('loading');
+        // CRITICAL FIX: Also remove any inline loading styles
+        container.style.opacity = '';
+        container.style.filter = '';
+        container.style.pointerEvents = '';
+        console.log(`✅ Loading class and styles removed from: ${selector}`);
+      }
     });
+    
+    // ENHANCED: Remove any loading indicators and overlays
+    const loadingElements = document.querySelectorAll('.loading-indicator, .spinner, [data-loading], .loading-overlay, .ajax-loading');
+    loadingElements.forEach(indicator => {
+      indicator.remove();
+      console.log('✅ Removed loading element:', indicator.className);
+    });
+    
+    // CRITICAL FIX: Force removal of any stuck CSS loading states
+    const allImages = document.querySelectorAll('img');
+    allImages.forEach(img => {
+      img.style.opacity = '';
+      img.style.filter = '';
+    });
+    
+    // ENHANCED: Force a repaint to ensure visual changes take effect
+    if (productGrid) {
+      productGrid.style.transform = 'translateZ(0)';
+      setTimeout(() => {
+        productGrid.style.transform = '';
+      }, 10);
+    }
     
     console.log('=== END HIDING LOADING STATE ===');
   }
@@ -1872,6 +1913,36 @@ class AjaxFilters {
     this.imageObserver = observer;
     
     console.log('=== END SETTING UP IMAGE STANDARDIZATION OBSERVER ===');
+  }
+
+  /**
+   * Force clear any stuck loading states (called on initialization)
+   */
+  forceCleanupLoadingStates() {
+    console.log('=== FORCE CLEANUP LOADING STATES ===');
+    
+    // This method ensures any stuck loading states from previous sessions are cleared
+    this.hideLoadingState();
+    
+    // Additional cleanup for common stuck states
+    const allGrids = document.querySelectorAll('ul.grid, .product-grid, .grid');
+    allGrids.forEach(grid => {
+      grid.style.opacity = '';
+      grid.style.filter = '';
+      grid.style.pointerEvents = '';
+      grid.classList.remove('loading', 'ajax-loading');
+    });
+    
+    // Remove any overlay elements that might be stuck
+    const overlays = document.querySelectorAll('[style*="opacity: 0.5"], [style*="opacity:0.5"]');
+    overlays.forEach(element => {
+      if (element.style.opacity === '0.5') {
+        element.style.opacity = '';
+        console.log('✅ Cleared stuck opacity 0.5 from element:', element.tagName);
+      }
+    });
+    
+    console.log('=== END FORCE CLEANUP ===');
   }
 }
 
