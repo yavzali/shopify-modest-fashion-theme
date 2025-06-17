@@ -1,5 +1,9 @@
 # DEVELOPMENT METHODOLOGY
 
+## YOUR ROLE: Shopify Theme Development Specialist
+
+You are a development specialist for Shopify theme customization, specifically working on the **Central Catalog Theme**. Your primary responsibility is ensuring every change works perfectly for users while preserving Dawn's architecture and styling. You must verify actual user experience, not just code execution.
+
 ## CURSOR AGENT INTERACTION GUIDELINES
 
 ### Required Development Context (Reference Every Time)
@@ -14,7 +18,6 @@
 - Check your work extensively before considering the task complete
 - Test both desktop and mobile views using MCP; make sure to use MCP on the live theme above
 - Reference the documentation as needed according to Development_methodology.md
-- **Use `shopify theme dev`** for active development and testing
 
 ### Document Interaction Protocol
 1. **ONLY work with "CURRENT" documents** - Ignore any document marked "PLANNED" or "IGNORE"
@@ -22,6 +25,15 @@
 3. **Update documentation** after each significant change or lesson learned
 4. **Follow systematic resolution order** as outlined in current phase documents
 5. **Never mark phases or issues complete** without explicit user approval
+
+### MCP Verification Requirements
+1. **Reference MCP_VERIFICATION_FRAMEWORK.md** for comprehensive testing procedures
+2. **Take screenshots before and after every change** using MCP Playwright
+3. **Verify user experience outcomes**, not code execution success
+4. **Test both desktop and mobile views** for every modification
+5. **Never rely on console logs for verification** - visual confirmation required
+6. **Follow systematic verification process** outlined in MCP framework
+7. **Use required reporting format** from framework to document all verification results
 
 ### Required Workflow Steps
 1. **Before Starting**: Review LESSONS_LEARNED_MASTER.md for relevant patterns and failures
@@ -55,18 +67,31 @@
 ## Completion Criteria Framework
 
 ### Phase Completion Definition
-**A phase is "complete" ONLY when:**
-1. **Exhaustive live site testing completed by user**
-2. **Explicit user approval provided**
-3. **All functionality verified across devices**
-4. **No regressions in previous phases**
+**A phase is "complete" ONLY when ALL of these criteria are met:**
+1. **User completes exhaustive live site testing** across all devices and scenarios
+2. **User provides explicit written approval** (e.g., "Phase 2 approved - ready for Phase 3")
+3. **All functionality verified working** on desktop, tablet, and mobile
+4. **Zero regressions** in previously approved phases
+5. **MCP verification reports document** all testing with screenshots
 
-### What Does NOT Constitute Completion
-❌ **AI assessment of "working"**
-❌ **Basic functionality testing**  
-❌ **Development environment testing only**
-❌ **Partial feature implementation**
-❌ **"Mostly working with minor issues"**
+### What Does NOT Constitute Completion (Common Mistakes)
+❌ **"Console logs show success"** - Code execution ≠ user experience  
+❌ **"Basic functionality testing"** - Must test edge cases and cross-device  
+❌ **"Development environment only"** - Must test on live theme  
+❌ **"Mostly working with minor issues"** - All issues must be resolved  
+❌ **"AI assessment"** - Only user approval counts
+
+**Example of Proper Completion**:
+```
+
+---
+
+**This methodology ensures systematic, user-centric development with proper quality control and realistic progress assessment.**
+
+**Document Length**: This document is comprehensive but includes a Quick Reference section above. Reference the full document initially, then use Quick Reference for daily workflow.
+User: "Phase 2 verified complete. Ajax filtering works perfectly on desktop and mobile. 
+Grid layout preserved. No regressions in Phase 1. Ready for Phase 3."
+```
 
 ## Testing Protocol
 
@@ -161,45 +186,30 @@
 
 ## AI Development Guidelines
 
+### AI Effective Use
+- **Dawn Architecture Analysis**: Study Dawn's core structure before implementing functionality replacements
+- **Code implementation** following Dawn's structural patterns while allowing strategic enhancements
+- **Documentation creation** and organization
+- **Systematic analysis** and debugging support with Dawn compatibility focus
+- **Research Dawn's existing implementations** as foundation for functional replacements
+
 ### AI Limitations Acknowledged
+- **Cannot create good visual elements from scratch** - must build on Dawn's design foundation
 - **Cannot determine completion** without user verification
 - **Cannot assess user experience** adequately
 - **Cannot test across all real-world scenarios**
-- **Cannot make strategic decisions** about phase advancement
-
-### AI Effective Use
-- **Code implementation** and technical problem-solving
-- **Documentation creation** and organization
-- **Systematic analysis** and debugging support
-- **Research and option analysis**
+- **Cannot make strategic decisions** about when to enhance vs. preserve Dawn elements
 
 ### AI Constraints
+- **Never break Dawn's core architecture** (HTML structure, CSS classes, responsive design)
 - **Never mark phases complete** without explicit user approval
 - **Never assume functionality works** without user testing
 - **Never skip testing steps** for convenience
 - **Never make strategic decisions** about development direction
+- **Always justify visual changes** in terms of aggregated content needs
+- **Always preserve Dawn's structural foundation** even when replacing functionality
 
 ## Quality Assurance Standards
-
-### Shopify Deployment Workflow
-**Preferred Development Workflow**:
-- **Use `shopify theme dev`** for active development and testing
-- **Automatic sync**: Changes sync automatically without manual approval prompts
-- **Live testing**: Enables immediate verification on live theme
-- **Rapid iteration**: No deployment bottlenecks during development
-
-**Avoid During Development**:
-- **`shopify theme push`**: Requires manual approval and can get stuck waiting for user input
-- **Manual deployment steps**: Interrupts development flow and testing cycles
-
-**Evidence of Success**:
-```
-• 16:18:48  Synced » update assets/ajax-filters.js
-```
-
-**When to Use Each Command**:
-- **Development Phase**: Use `shopify theme dev` for automatic sync and testing
-- **Final Deployment**: Use `shopify theme push` only for final production deployment when manual approval is acceptable
 
 ### Technical Standards
 - **Dawn Architecture Preservation**: Always preserve Dawn's core HTML structure, CSS classes, and responsive design system
@@ -233,7 +243,7 @@
 - [ ] **Preserve Dawn's HTML structure and CSS classes** in all modifications
 - [ ] **Justify any visual changes** in terms of aggregated content needs
 - [ ] Use MCP Playwright for desktop and mobile screenshot verification
-- [ ] Monitor Shopify CLI for sync errors in terminal, and  Use `shopify theme dev`** for active development & testing
+- [ ] Monitor Shopify CLI for sync errors in terminal
 - [ ] Test on live theme: **Central Catalog Theme**
 - [ ] **Verify structural consistency** with Dawn's foundation
 - [ ] Update documentation with lessons learned
