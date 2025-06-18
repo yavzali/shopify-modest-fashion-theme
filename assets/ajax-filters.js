@@ -1482,151 +1482,71 @@ class AjaxFilters {
     console.log('Total count:', totalProductCount);
     
     try {
-      // CRITICAL FIX: AGGRESSIVE cleanup of ALL existing product grids AND pagination
-      console.log('🧹 AGGRESSIVE CLEANUP: Removing ALL existing product grids and pagination...');
+      // CRITICAL FIX: SURGICAL cleanup instead of aggressive/nuclear cleanup
+      console.log('🎯 SURGICAL CLEANUP: Removing only product grid content...');
       
-      // Strategy 1: Remove existing pagination first
-      const paginationSelectors = [
-        '.pagination',
-        'nav[aria-label*="pagination"]',
-        'nav[aria-label*="Pagination"]',
-        '.pagination-wrapper',
-        'nav[role="navigation"]',
-        '.pagination-nav',
-        '[data-pagination]'
-      ];
-      
-      let removedPaginationCount = 0;
-      paginationSelectors.forEach(selector => {
-        const paginationElements = document.querySelectorAll(selector);
-        paginationElements.forEach(pagination => {
-          console.log(`🗑️ Removing pagination (${selector}):`, pagination.className || pagination.tagName);
-          pagination.remove();
-          removedPaginationCount++;
-        });
-      });
-      
-      console.log(`✅ Removed ${removedPaginationCount} existing pagination elements`);
-      
-      // Strategy 2: Remove by common grid selectors
-      const gridSelectors = [
-        'ul.product-grid',
-        'ul.grid.product-grid', 
-        'ul[class*="product-grid"]',
-        'ul[class*="grid"]:not(.menu-drawer__menu):not([role="list"]):not(.list-menu)',
-        'ul[data-grid="collection"]',
+      // Strategy 1: Find the main product grid container first
+      let mainProductGrid = null;
+      const mainGridSelectors = [
+        '#main-collection-product-grid ul.product-grid',
+        'ul.product-grid.grid',
         'ul.collection__products',
-        'ul.grid.collection__products',
-        '.product-grid',
-        '[data-grid]'
+        'ul[data-grid="collection"]',
+        '.collection ul.grid'
       ];
       
-      let removedGridsCount = 0;
-      gridSelectors.forEach(selector => {
-        const grids = document.querySelectorAll(selector);
-        grids.forEach(grid => {
-          // Enhanced validation: make sure this isn't a navigation menu
-          const isNavigationMenu = grid.classList.contains('menu-drawer__menu') || 
-                                 grid.classList.contains('list-menu') ||
-                                 grid.getAttribute('role') === 'list' ||
-                                 grid.closest('nav') ||
-                                 grid.closest('.menu-drawer') ||
-                                 grid.closest('.header') ||
-                                 grid.closest('.footer') ||
-                                 grid.closest('[aria-label*="menu"]') ||
-                                 grid.closest('[data-menu]');
-          
-          if (!isNavigationMenu) {
-            console.log(`🗑️ Removing grid (${selector}):`, grid.className || grid.tagName);
-            grid.remove();
-            removedGridsCount++;
-          }
-        });
-      });
-      
-      // Strategy 3: Find and remove any UL elements containing product cards
-      const productContainers = document.querySelectorAll('ul');
-      productContainers.forEach(container => {
-        // Check if this UL contains product cards
-        const hasProductCards = container.querySelector('.card-wrapper, .card, [data-product], .product-item, .grid__item .card-wrapper');
-        const isNavigationMenu = container.classList.contains('menu-drawer__menu') || 
-                               container.classList.contains('list-menu') ||
-                               container.getAttribute('role') === 'list' ||
-                               container.closest('nav') ||
-                               container.closest('.menu-drawer') ||
-                               container.closest('.header') ||
-                               container.closest('.footer');
-        
-        if (hasProductCards && !isNavigationMenu) {
-          console.log('🗑️ Removing UL with product cards:', container.className || 'no-class');
-          container.remove();
-          removedGridsCount++;
-        }
-      });
-      
-      // Strategy 4: Nuclear option - remove any remaining product containers
-      const remainingProductElements = document.querySelectorAll('[data-products-count], .collection__products');
-      remainingProductElements.forEach(element => {
-        console.log('🗑️ Nuclear cleanup - removing product container:', element.className || element.tagName);
-        element.remove();
-        removedGridsCount++;
-      });
-      
-      console.log(`✅ AGGRESSIVE CLEANUP COMPLETE: Removed ${removedGridsCount} existing grids/containers and ${removedPaginationCount} pagination elements`);
-      
-      // ENHANCED: Find the proper container for the new grid
-      let containerElement = null;
-      const containerSelectors = [
-        '#main-collection-product-grid',
-        '.collection',
-        '.collection-content', 
-        'main .shopify-section',
-        '#MainContent',
-        'main',
-        'body'
-      ];
-      
-      for (const selector of containerSelectors) {
-        containerElement = document.querySelector(selector);
-        if (containerElement) {
-          console.log(`✅ Found container with selector: ${selector}`);
+      for (const selector of mainGridSelectors) {
+        mainProductGrid = document.querySelector(selector);
+        if (mainProductGrid) {
+          console.log(`✅ Found main product grid: ${selector}`);
           break;
         }
       }
       
-      if (!containerElement) {
-        console.error('❌ Could not find container element for product grid');
-        return;
-      }
-      
-      // CRITICAL: Create a single new Dawn-style product grid
-      console.log('🏗️ Creating new Dawn product grid...');
-      const productGrid = document.createElement('ul');
-      
-      // ENHANCED: Use comprehensive Dawn theme grid classes for perfect layout
-      const dawnGridClasses = 'product-grid grid product-grid grid--2-col-tablet-down grid--4-col-desktop grid--one-third-max grid--quarter-max grid--peek collection__products';
-      productGrid.className = dawnGridClasses;
-      productGrid.setAttribute('role', 'list');
-      productGrid.setAttribute('data-grid', 'collection');
-      productGrid.setAttribute('data-products-count', totalProductCount.toString());
-      productGrid.setAttribute('id', 'ajax-product-grid'); // Unique identifier
-      
-      // CRITICAL: Insert the grid in the correct position within the container
-      const insertionPoint = containerElement.querySelector('.collection__title, .facets, h2, .collection-hero');
-      if (insertionPoint) {
-        // Insert after the title/facets but before any other content
-        insertionPoint.parentNode.insertBefore(productGrid, insertionPoint.nextSibling);
-        console.log('✅ Inserted grid after existing content elements');
-      } else {
-        // Append to the container if no insertion point found
-        containerElement.appendChild(productGrid);
-        console.log('✅ Appended grid to container');
-      }
-      
-      if (combinedProducts.length > 0) {
-        console.log('=== ADDING PRODUCTS TO DAWN GRID ===');
+      if (mainProductGrid) {
+        // SURGICAL: Only clear the contents of the existing grid, preserve the container
+        console.log('🎯 Clearing existing product grid contents (preserving container)');
+        mainProductGrid.innerHTML = '';
         
-        // Add new products from combined results
+        // Update the grid's data attributes
+        mainProductGrid.setAttribute('data-products-count', totalProductCount.toString());
+        
+      } else {
+        // If no existing grid found, we need to create one, but do it safely
+        console.log('⚠️ No existing product grid found, creating new one safely...');
+        
+        // Find a safe container that won't break the page
+        const safeContainer = document.querySelector('#main-collection-product-grid') || 
+                            document.querySelector('.collection') ||
+                            document.querySelector('#MainContent');
+        
+        if (safeContainer) {
+          // Create new grid
+          mainProductGrid = document.createElement('ul');
+          mainProductGrid.className = 'product-grid grid product-grid grid--2-col-tablet-down grid--4-col-desktop';
+          mainProductGrid.setAttribute('role', 'list');
+          mainProductGrid.setAttribute('data-grid', 'collection');
+          mainProductGrid.setAttribute('data-products-count', totalProductCount.toString());
+          
+          safeContainer.appendChild(mainProductGrid);
+          console.log('✅ Created new product grid safely');
+        } else {
+          console.error('❌ Cannot find safe container for product grid');
+          return;
+        }
+      }
+      
+      // Strategy 2: Remove only existing pagination (safely)
+      const existingPagination = document.querySelector('nav[aria-label*="Pagination"], .pagination');
+      if (existingPagination) {
+        console.log('🗑️ Removing existing pagination');
+        existingPagination.remove();
+      }
+      
+      // Now safely add products to the preserved/created grid
+      if (combinedProducts.length > 0) {
+        console.log('=== ADDING PRODUCTS TO PRESERVED GRID ===');
+        
         combinedProducts.forEach((product, index) => {
           try {
             // Parse the product HTML and extract the grid item
@@ -1649,7 +1569,7 @@ class AjaxFilters {
                 listItem.appendChild(gridItem.cloneNode(true));
               }
               
-              productGrid.appendChild(listItem);
+              mainProductGrid.appendChild(listItem);
             } else {
               console.warn(`Product ${index + 1} missing grid item structure`);
             }
@@ -1658,7 +1578,7 @@ class AjaxFilters {
           }
         });
         
-        console.log(`✅ Added ${combinedProducts.length} products to new Dawn grid`);
+        console.log(`✅ Added ${combinedProducts.length} products to preserved grid`);
         
       } else {
         console.log('No products to display, adding empty state message');
@@ -1667,74 +1587,16 @@ class AjaxFilters {
         const noProductsMessage = document.createElement('li');
         noProductsMessage.className = 'grid__item grid__item--full-width';
         noProductsMessage.innerHTML = '<p>No products found matching your filters.</p>';
-        productGrid.appendChild(noProductsMessage);
+        mainProductGrid.appendChild(noProductsMessage);
       }
       
-      // CRITICAL FIX: Handle pagination positioning - add AFTER the product grid
-      if (hasPagination && combinedProducts.length > 0) {
-        console.log('🔗 Adding pagination AFTER product grid...');
-        
-        // Create proper Dawn-style pagination
-        const paginationWrapper = document.createElement('nav');
-        paginationWrapper.className = 'pagination-wrapper';
-        paginationWrapper.setAttribute('aria-label', 'Pagination');
-        paginationWrapper.setAttribute('role', 'navigation');
-        
-        // For multi-retailer filtering, we don't show pagination since we're combining results
-        // But we can add a simple "Load more" indicator if needed
-        const paginationContent = document.createElement('div');
-        paginationContent.className = 'pagination';
-        paginationContent.innerHTML = `
-          <span class="pagination__text">
-            Showing ${combinedProducts.length} products from multiple retailers
-          </span>
-        `;
-        
-        paginationWrapper.appendChild(paginationContent);
-        
-        // Insert pagination AFTER the product grid
-        if (productGrid.parentNode) {
-          productGrid.parentNode.insertBefore(paginationWrapper, productGrid.nextSibling);
-          console.log('✅ Pagination inserted AFTER product grid');
-        } else {
-          containerElement.appendChild(paginationWrapper);
-          console.log('✅ Pagination appended to container after grid');
-        }
-      } else {
-        console.log('ℹ️ No pagination needed for this result set');
-      }
-      
-      // CRITICAL: Ensure proper grid positioning and layout
-      productGrid.style.display = '';
-      productGrid.style.opacity = '1';
-      productGrid.style.visibility = 'visible';
-      productGrid.style.width = '';
-      productGrid.style.maxWidth = '';
-      productGrid.style.margin = '';
-      productGrid.style.padding = '';
-      
-      // ENHANCED: Ensure parent container has proper Dawn classes
-      const parentContainer = productGrid.parentElement;
-      if (parentContainer && !parentContainer.classList.contains('collection')) {
-        const collectionContainer = productGrid.closest('.collection, .page-width, main');
-        if (collectionContainer && !collectionContainer.classList.contains('collection')) {
-          collectionContainer.classList.add('collection');
-          console.log('✅ Added collection class to parent container');
-        }
-      }
-      
-      // CRITICAL: Force DOM reflow to ensure layout is applied
-      productGrid.offsetHeight; // Force reflow
-      
-      console.log('✅ Grid positioning and layout applied');
-      
-      // Update product count displays
+      // Update product count display safely
       this.updateProductCount(totalProductCount);
       
-      console.log('✅ SINGLE GRID WITH PROPER PAGINATION: Page content updated with merged results');
+      console.log('✅ SURGICAL UPDATE COMPLETE - Page structure preserved');
       
     } catch (error) {
-      console.error('Error updating page content:', error);
+      console.error('❌ Error in updatePageContentWithMergedResults:', error);
     }
   }
 
