@@ -841,9 +841,8 @@ class AjaxFilters {
       if (this.activeFilters.length === 0) {
         // No filters - show all products
         console.log('No filters active, showing all products');
-        const response = await this.fetchFilteredProducts();
-        const result = this.parseFilterResponse(response);
-        this.updatePageContent(result.html, result.productCount, result.hasPagination);
+        const result = await this.fetchFilteredProducts();
+        this.updatePageContentWithMergedResults(result.products, result.productCount, result.hasPagination);
         this.updateURL('/collections/all');
         
         // Apply comprehensive image standardization after content update
@@ -853,14 +852,32 @@ class AjaxFilters {
         
         this.hideLoadingState();
       } else if (this.activeFilters.length === 1) {
-        // Single filter - use direct request for efficiency
+        // CRITICAL FIX: Single filter - use comprehensive fetch to get ALL products and correct total count
         const retailer = this.activeFilters[0];
-        console.log('Single filter active, using direct request:', retailer);
-        console.log('Fetching products for retailer:', retailer);
+        console.log('Single filter active, fetching products for retailer:', retailer);
         
-        const response = await this.fetchFilteredProducts(retailer);
-        const result = this.parseFilterResponse(response);
-        this.updatePageContent(result.html, result.productCount, result.hasPagination);
+        // RATE LIMITING FIX: Use safer fetching with limits
+        const result = await this.fetchAllProductsForRetailer(retailer);
+        console.log('Single retailer result:', {
+          products: result.products.length,
+          totalCount: result.totalCount,
+          retailer: result.retailer
+        });
+        
+        // CRITICAL FIX: Use the comprehensive result with proper pagination
+        // Show first 16 products but display correct total count and enable pagination
+        const productsToShow = result.products.slice(0, 16);
+        const hasPagination = result.products.length > 16;
+        
+        console.log('Displaying for single filter:', {
+          productsToShow: productsToShow.length,
+          totalAvailable: result.products.length,
+          totalCount: result.totalCount,
+          hasPagination: hasPagination
+        });
+        
+        // Update page with first 16 products but show correct total count
+        this.updatePageContentWithSingleFilterResults(productsToShow, result.totalCount, result.products.length, hasPagination);
         this.updateURL(this.buildFilterURL());
         
         // Apply comprehensive image standardization after content update
@@ -870,48 +887,46 @@ class AjaxFilters {
         
         this.hideLoadingState();
       } else {
-        // Multiple filters - use OR logic with client-side merging
-        console.log('Multiple filters active, using OR logic:', this.activeFilters);
+        // RATE LIMITING FIX: Multiple filters - use SEQUENTIAL processing instead of parallel
+        console.log('Multiple filters active, using SEQUENTIAL OR logic (RATE LIMIT SAFE):', this.activeFilters);
         
-        // Fetch retailers in parallel for better performance
-        const fetchPromises = this.activeFilters.map(async (retailer, index) => {
-          console.log('Starting fetch for retailer:', retailer);
+        // CRITICAL FIX: Process retailers sequentially to prevent rate limiting
+        const responses = [];
+        for (let i = 0; i < this.activeFilters.length; i++) {
+          const retailer = this.activeFilters[i];
+          console.log(`Processing retailer ${i + 1}/${this.activeFilters.length}: ${retailer}`);
           
-          // Add small delay to prevent server overload with parallel requests
-          if (index > 0) {
-            await new Promise(resolve => setTimeout(resolve, 200 * index));
-            console.log(`Added ${200 * index}ms delay for ${retailer}`);
+          // RATE LIMITING: Add 1-second delay between retailers (except first)
+          if (i > 0) {
+            console.log(`⏱️ Rate limiting delay: waiting 1 second before ${retailer}...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
           try {
             const allProducts = await this.fetchAllProductsForRetailer(retailer);
-            console.log(`Completed fetch for ${retailer}: ${allProducts.products.length} products`);
-            return {
+            console.log(`✅ Completed fetch for ${retailer}: ${allProducts.products.length} products`);
+            responses.push({
               retailer: retailer,
               products: allProducts.products,
               totalCount: allProducts.totalCount
-            };
+            });
           } catch (error) {
-            console.error(`Error fetching products for ${retailer}:`, error);
-            return {
+            console.error(`❌ Error fetching products for ${retailer}:`, error);
+            responses.push({
               retailer: retailer,
               products: [],
               totalCount: 0
-            };
+            });
           }
-        });
+        }
         
-        console.log('Waiting for all retailers to complete...');
-        const responses = await Promise.all(fetchPromises);
-        console.log('Received responses for all retailers:', responses.length);
+        console.log('✅ Completed sequential processing for all retailers:', responses.length);
         
         // Process and combine all results
         const seenProducts = new Set();
         
         for (const response of responses) {
           console.log(`Processing results for ${response.retailer}: ${response.products.length} products`);
-          // CRITICAL FIX: Use the actual totalCount from each retailer response
-          // Don't add them together since that would double-count, instead use the combined unique products count
           
           response.products.forEach(product => {
             // Use product URL as unique identifier to avoid duplicates
@@ -926,8 +941,8 @@ class AjaxFilters {
         // CRITICAL FIX: Set totalProductCount to the actual number of unique combined products
         totalProductCount = combinedProducts.length;
         
-        console.log('Combined unique products:', combinedProducts.length);
-        console.log('Total product count (corrected):', totalProductCount);
+        console.log('✅ Combined unique products:', combinedProducts.length);
+        console.log('✅ Total product count (corrected):', totalProductCount);
         
         // Update page content with merged results
         this.updatePageContentWithMergedResults(combinedProducts, totalProductCount, false);
@@ -947,28 +962,37 @@ class AjaxFilters {
    * Fetch all products for a specific retailer across all pages
    */
   async fetchAllProductsForRetailer(retailer) {
-    console.log(`=== FETCHING ALL PRODUCTS FOR ${retailer} ===`);
+    console.log(`=== FETCHING PRODUCTS FOR ${retailer} (RATE LIMIT SAFE) ===`);
     
     let allProducts = [];
     let currentPage = 1;
     let hasMorePages = true;
     let totalCount = 0;
+    let firstPageTotalCount = 0; // Store the total count from the first page
     
-    while (hasMorePages && currentPage <= 50) { // Safety limit
+    // RATE LIMITING FIX: Reduce from 50 to 5 pages maximum per retailer
+    // This reduces requests from 100 to 10 for 2 retailers (90% reduction)
+    const MAX_PAGES_PER_RETAILER = 5;
+    
+    while (hasMorePages && currentPage <= MAX_PAGES_PER_RETAILER) {
       try {
-        console.log(`Fetching page ${currentPage} for ${retailer}...`);
+        console.log(`Fetching page ${currentPage}/${MAX_PAGES_PER_RETAILER} for ${retailer}...`);
         
-        // CRITICAL FIX: Use section_id for proper Ajax response
-        const url = `/collections/all?filter.p.tag=${encodeURIComponent(retailer)}&page=${currentPage}&section_id=main-collection-product-grid`;
-        console.log('Request URL:', url);
+        // CRITICAL FIX: For first page, get full page to extract total count
+        // For subsequent pages, use section_id for performance
+        let url;
+        if (currentPage === 1) {
+          // First page: Get full page to extract total count
+          url = `/collections/all?filter.p.tag=${encodeURIComponent(retailer)}&page=${currentPage}`;
+          console.log('First page URL (full page):', url);
+        } else {
+          // Subsequent pages: Use section_id for performance
+          url = `/collections/all?filter.p.tag=${encodeURIComponent(retailer)}&page=${currentPage}&section_id=main-collection-product-grid`;
+          console.log('Subsequent page URL (section only):', url);
+        }
         
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'X-Requested-With': 'XMLHttpRequest'
-          }
-        });
+        // RATE LIMITING FIX: Add retry logic for 429 errors
+        const response = await this.fetchWithRetry(url, 0);
         
         if (!response.ok) {
           console.error(`HTTP error for ${retailer} page ${currentPage}:`, response.status);
@@ -980,18 +1004,31 @@ class AjaxFilters {
         
         const parsed = this.parseFilterResponse(html);
         console.log(`Parsed ${parsed.products.length} products from ${retailer} page ${currentPage}`);
-        console.log(`Has pagination: ${parsed.hasPagination}, Has next page: ${parsed.hasNextPage}`);
+        console.log(`Product count from response: ${parsed.productCount}`);
+        
+        // CRITICAL: Store the total count from the first page response
+        if (currentPage === 1 && parsed.productCount > 0) {
+          firstPageTotalCount = parsed.productCount;
+          totalCount = firstPageTotalCount;
+          console.log(`✅ Stored TOTAL count from first page: ${firstPageTotalCount}`);
+        }
         
         if (parsed.products.length === 0) {
           console.log(`No products found on page ${currentPage} for ${retailer}, stopping pagination`);
           hasMorePages = false;
         } else {
           allProducts = allProducts.concat(parsed.products);
-          totalCount = parsed.productCount || totalCount;
           
           // CRITICAL FIX: Properly check for next page
-          hasMorePages = parsed.hasNextPage && currentPage < 50;
-          console.log(`Page ${currentPage} complete. Has more pages: ${hasMorePages}`);
+          hasMorePages = parsed.hasPagination && currentPage < MAX_PAGES_PER_RETAILER && parsed.products.length >= 16;
+          console.log(`Page ${currentPage} complete. Products on page: ${parsed.products.length}, Has more pages: ${hasMorePages}`);
+          
+          // RATE LIMITING: Add small delay between pages of same retailer
+          if (hasMorePages && currentPage > 1) {
+            console.log('⏱️ Adding 500ms delay between pages...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          
           currentPage++;
         }
         
@@ -1001,52 +1038,109 @@ class AjaxFilters {
       }
     }
     
-    console.log(`=== COMPLETED FETCH FOR ${retailer} ===`);
-    console.log(`Total products found: ${allProducts.length}`);
-    console.log(`Total count: ${totalCount}`);
+    // CRITICAL: Use the total count from the first page, not the number of fetched products
+    const finalTotalCount = firstPageTotalCount > 0 ? firstPageTotalCount : allProducts.length;
+    
+    console.log(`=== COMPLETED FETCH FOR ${retailer} (RATE LIMIT SAFE) ===`);
+    console.log(`Total products fetched: ${allProducts.length} (limited to ${MAX_PAGES_PER_RETAILER} pages)`);
+    console.log(`Total count (from Shopify): ${finalTotalCount}`);
+    console.log(`Pages processed: ${currentPage - 1}/${MAX_PAGES_PER_RETAILER}`);
     
     return {
       products: allProducts,
-      totalCount: totalCount,
+      totalCount: finalTotalCount, // Use the Shopify total count, not fetched count
       retailer: retailer
     };
   }
-  
+
   /**
-   * Fetch filtered products for a specific retailer (or all products if no retailer)
+   * RATE LIMITING FIX: Fetch with retry logic for 429 errors
    */
-  async fetchFilteredProducts(retailer = null) {
-    const params = new URLSearchParams();
+  async fetchWithRetry(url, retryCount = 0) {
+    const MAX_RETRIES = 3;
     
-    if (retailer) {
-      params.append('filter.p.tag', retailer);
-      console.log('Fetching products for retailer:', retailer);
-    } else {
-      console.log('Fetching all products (no filter)');
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      
+      // RATE LIMITING: Handle 429 errors with exponential backoff
+      if (response.status === 429) {
+        if (retryCount < MAX_RETRIES) {
+          const retryAfter = response.headers.get('Retry-After') || Math.pow(2, retryCount + 1);
+          console.log(`🚨 Rate limited (429). Retrying in ${retryAfter} seconds... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+          return this.fetchWithRetry(url, retryCount + 1);
+        } else {
+          console.error(`❌ Max retries exceeded for rate limiting on: ${url}`);
+          throw new Error(`Rate limit exceeded after ${MAX_RETRIES} retries`);
+        }
+      }
+      
+      return response;
+      
+    } catch (error) {
+      if (retryCount < MAX_RETRIES) {
+        const delay = Math.pow(2, retryCount + 1);
+        console.log(`🔄 Network error. Retrying in ${delay} seconds... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, delay * 1000));
+        return this.fetchWithRetry(url, retryCount + 1);
+      } else {
+        console.error(`❌ Max retries exceeded for: ${url}`, error);
+        throw error;
+      }
     }
-    
-    // Get current sort parameter
-    const currentSort = new URLSearchParams(window.location.search).get('sort_by');
-    if (currentSort) {
-      params.set('sort_by', currentSort);
-      console.log('Added sort parameter:', currentSort);
-    }
-    
-    // Build section URL for Ajax request
-    const sectionUrl = `/collections/all?${params.toString()}&section_id=main-collection-product-grid`;
-    console.log('Fetching from URL:', sectionUrl);
-    
-    const response = await fetch(sectionUrl);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    return await response.text();
   }
   
   /**
-   * Parse filter response HTML and extract products, count, and pagination
+   * Fetch filtered products from Shopify
+   */
+  async fetchFilteredProducts(retailer = null) {
+    try {
+      // CRITICAL FIX: Build proper URL without section_id parameter
+      // The section_id parameter was causing malformed responses that couldn't be parsed
+      let url = this.buildFilterURL();
+      
+      // Add retailer filter if specified
+      if (retailer) {
+        const urlObj = new URL(url, window.location.origin);
+        urlObj.searchParams.set('filter.p.tag', retailer);
+        url = urlObj.pathname + urlObj.search;
+      }
+      
+      // ENHANCED: Preserve sort parameter from current URL
+      const currentParams = new URLSearchParams(window.location.search);
+      if (currentParams.has('sort_by')) {
+        const urlObj = new URL(url, window.location.origin);
+        urlObj.searchParams.set('sort_by', currentParams.get('sort_by'));
+        url = urlObj.pathname + urlObj.search;
+        console.log('Added sort parameter:', currentParams.get('sort_by'));
+      }
+      
+      console.log('Fetching from URL:', url);
+      
+      // RATE LIMITING FIX: Use retry logic for 429 errors
+      const response = await this.fetchWithRetry(url, 0);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const html = await response.text();
+      return this.parseFilterResponse(html);
+      
+    } catch (error) {
+      console.error('Error fetching filtered products:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * ENHANCED: Parse filter response with improved Shopify structure handling
    */
   parseFilterResponse(html) {
     console.log('=== PARSING FILTER RESPONSE ===');
@@ -1055,157 +1149,279 @@ class AjaxFilters {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    // CRITICAL FIX: Dawn theme Ajax responses have different structure
-    // The response might be the entire page or just a section
-    
+    // CRITICAL FIX: Enhanced parsing for Shopify's actual response structure
     let productElements = [];
+    let productCount = 0;
     
-    // Try multiple approaches to find products in Dawn theme structure
-    console.log('=== TRYING MULTIPLE PRODUCT SELECTORS ===');
+    console.log('=== ENHANCED SHOPIFY STRUCTURE PARSING ===');
     
-    // Approach 1: Look for Dawn's standard product grid items
-    const productSelectors = [
-      'li.grid__item .card-wrapper',
-      '.grid__item .card-wrapper', 
-      'li.grid__item',
-      '.grid__item',
-      '.product-item',
-      '.card-wrapper',
-      '[data-product-id]'
+    // First, try to find the complete product grid structure
+    const productGridSelectors = [
+      'ul.product-grid li.grid__item',
+      'ul.grid.product-grid li.grid__item', 
+      '.collection ul.grid li.grid__item',
+      '#main-collection-product-grid ul.grid li.grid__item',
+      '.shopify-section ul.grid li.grid__item'
     ];
     
-    for (const selector of productSelectors) {
+    for (const selector of productGridSelectors) {
       const foundProducts = doc.querySelectorAll(selector);
-      console.log(`Selector "${selector}" found: ${foundProducts.length} products`);
+      console.log(`Grid selector "${selector}" found: ${foundProducts.length} products`);
       
       if (foundProducts.length > 0) {
         productElements = Array.from(foundProducts);
-        console.log(`✅ Successfully found ${productElements.length} products using selector: ${selector}`);
+        console.log(`✅ Successfully found ${productElements.length} products using: ${selector}`);
         break;
       }
     }
     
-    // If no products found, try to find the main collection content
+    // If no products found in grid structure, try alternative approaches
     if (productElements.length === 0) {
-      console.log('=== NO PRODUCTS FOUND - CHECKING MAIN CONTENT ===');
+      console.log('=== TRYING ALTERNATIVE PRODUCT SELECTORS ===');
       
-      // Look for the main collection section
-      const mainSection = doc.querySelector('#main-collection-product-grid, .collection, main');
-      if (mainSection) {
-        console.log('Found main section, searching within it...');
+      const alternativeSelectors = [
+        '.grid__item .card-wrapper',
+        '.grid__item',
+        '.product-item',
+        '.card-wrapper',
+        '[data-product-id]',
+        'article.card-wrapper',
+        '.card.product-card'
+      ];
+      
+      for (const selector of alternativeSelectors) {
+        const foundProducts = doc.querySelectorAll(selector);
+        console.log(`Alternative selector "${selector}" found: ${foundProducts.length} products`);
         
-        for (const selector of productSelectors) {
-          const foundProducts = mainSection.querySelectorAll(selector);
-          console.log(`Main section selector "${selector}" found: ${foundProducts.length} products`);
-          
-          if (foundProducts.length > 0) {
-            productElements = Array.from(foundProducts);
-            console.log(`✅ Successfully found ${productElements.length} products in main section using: ${selector}`);
-            break;
-          }
-        }
-      }
-    }
-    
-    // Final fallback: look for any element with product-related classes or attributes
-    if (productElements.length === 0) {
-      console.log('=== FINAL FALLBACK - LOOKING FOR ANY PRODUCT ELEMENTS ===');
-      const fallbackProducts = doc.querySelectorAll('[class*="product"], [class*="card"], [data-product]');
-      console.log(`Fallback found: ${fallbackProducts.length} potential product elements`);
-      
-      if (fallbackProducts.length > 0) {
-        productElements = Array.from(fallbackProducts);
-        console.log(`✅ Using fallback: ${productElements.length} product elements`);
-      }
-    }
-    
-    // CRITICAL FIX: Convert DOM elements to proper product objects with URLs
-    console.log('=== CONVERTING DOM ELEMENTS TO PRODUCT OBJECTS ===');
-    const products = productElements.map((element, index) => {
-      // Find the product link within the element
-      const productLink = element.tagName === 'A' ? element : element.querySelector('a[href*="/products/"]');
-      const productUrl = productLink ? productLink.getAttribute('href') : null;
-      
-      // Extract product handle from URL
-      const productHandle = productUrl ? productUrl.split('/products/')[1]?.split('?')[0] : null;
-      
-      // Find product title
-      const titleElement = element.querySelector('.card__heading a, .product-title, h3 a, .card__content h3 a, a[href*="/products/"]');
-      const productTitle = titleElement ? titleElement.textContent.trim() : '';
-      
-      // Find product price
-      const priceElement = element.querySelector('.price, .product-price, .card__content .price');
-      const productPrice = priceElement ? priceElement.textContent.trim() : '';
-      
-      if (index < 3) { // Debug first 3 products
-        console.log(`Product ${index + 1}:`, {
-          url: productUrl,
-          handle: productHandle,
-          title: productTitle,
-          price: productPrice
-        });
-      }
-      
-      return {
-        element: element.outerHTML,
-        url: productUrl,
-        href: productUrl, // Alternative property name for compatibility
-        id: productHandle, // Use handle as ID
-        handle: productHandle,
-        title: productTitle,
-        price: productPrice
-      };
-    });
-    
-    // Filter out products without valid URLs (these would be invalid anyway)
-    const validProducts = products.filter(product => product.url && product.url.includes('/products/'));
-    console.log(`Valid products with URLs: ${validProducts.length} out of ${products.length}`);
-    
-    // Extract product count from the response
-    let productCount = validProducts.length;
-    
-    // Try to find the actual product count from the page
-    const countSelectors = [
-      '.collection__title',
-      '[data-product-count]',
-      '.facets__summary',
-      'h2'
-    ];
-    
-    for (const selector of countSelectors) {
-      const countElement = doc.querySelector(selector);
-      if (countElement && countElement.textContent.includes('product')) {
-        const match = countElement.textContent.match(/(\d+)\s+product/);
-        if (match) {
-          const extractedCount = parseInt(match[1]);
-          console.log(`Found product count from ${selector}: ${extractedCount}`);
-          productCount = extractedCount;
+        if (foundProducts.length > 0) {
+          productElements = Array.from(foundProducts);
+          console.log(`✅ Found products using alternative selector: ${selector}`);
           break;
         }
       }
     }
     
-    // Check for pagination
-    const pagination = doc.querySelector('.pagination, [aria-label*="pagination"]');
-    const hasPagination = !!pagination;
+    // Extract product count from various possible locations
+    const countSelectors = [
+      '.collection__title',
+      '[data-product-count]',
+      '.facets__summary',
+      '.collection-product-count', 
+      'h1',
+      'h2',
+      '.collection-hero__title',
+      '.page-header h1',
+      '.page-title'
+    ];
     
-    console.log(`=== PARSE RESULTS ===`);
+    let totalProductCount = 0; // Total available products
+    let currentPageCount = 0;  // Products on current page
+    
+    for (const selector of countSelectors) {
+      const countElement = doc.querySelector(selector);
+      if (countElement && countElement.textContent) {
+        const text = countElement.textContent;
+        console.log(`Checking count text from ${selector}: "${text}"`);
+        
+        // ENHANCED: Look for total count patterns first
+        // Pattern 1: "446 products" (total count)
+        const totalMatch = text.match(/^(\d+)\s+products?$/i);
+        if (totalMatch) {
+          totalProductCount = parseInt(totalMatch[1]);
+          console.log(`Found TOTAL product count from ${selector}: ${totalProductCount}`);
+          break;
+        }
+        
+        // Pattern 2: "Showing 16 of 446 products" (extract the total)
+        const showingMatch = text.match(/showing\s+\d+\s+of\s+(\d+)\s+products?/i);
+        if (showingMatch) {
+          totalProductCount = parseInt(showingMatch[1]);
+          console.log(`Found TOTAL from "showing X of Y" pattern in ${selector}: ${totalProductCount}`);
+          break;
+        }
+        
+        // Pattern 3: "16 of 446 products" (extract the total)
+        const ofMatch = text.match(/\d+\s+of\s+(\d+)\s+products?/i);
+        if (ofMatch) {
+          totalProductCount = parseInt(ofMatch[1]);
+          console.log(`Found TOTAL from "X of Y" pattern in ${selector}: ${totalProductCount}`);
+          break;
+        }
+        
+        // Pattern 4: "16 products" (current page count - fallback)
+        const currentMatch = text.match(/(\d+)\s+products?/i);
+        if (currentMatch && currentPageCount === 0) {
+          currentPageCount = parseInt(currentMatch[1]);
+          console.log(`Found current page count from ${selector}: ${currentPageCount}`);
+        }
+        
+        // Pattern 5: "Showing 16" (current page count)
+        const showingCurrentMatch = text.match(/showing\s+(\d+)/i);
+        if (showingCurrentMatch && currentPageCount === 0) {
+          currentPageCount = parseInt(showingCurrentMatch[1]);
+          console.log(`Found current page count from "showing X" in ${selector}: ${currentPageCount}`);
+        }
+      }
+    }
+    
+    // CRITICAL FIX: If we found a total count, use it; otherwise use current page count as fallback
+    if (totalProductCount > 0) {
+      productCount = totalProductCount;
+      console.log(`✅ Using TOTAL product count: ${productCount}`);
+    } else if (currentPageCount > 0) {
+      productCount = currentPageCount;
+      console.log(`⚠️ Using current page count as fallback: ${productCount}`);
+    } else {
+      productCount = productElements.length;
+      console.log(`⚠️ Using product elements count as final fallback: ${productCount}`);
+    }
+    
+    // ENHANCED: Convert DOM elements to product objects with better extraction
+    console.log('=== CONVERTING DOM ELEMENTS TO PRODUCT OBJECTS ===');
+    const products = productElements.map((element, index) => {
+      // Enhanced product link extraction
+      let productLink = null;
+      let productUrl = null;
+      
+      // Try multiple approaches to find the product link
+      if (element.tagName === 'A' && element.href && element.href.includes('/products/')) {
+        productLink = element;
+        productUrl = element.href;
+      } else {
+        // Look for product links within the element
+        const linkSelectors = [
+          'a[href*="/products/"]',
+          '.card__link',
+          '.product-link',
+          '.card__heading a',
+          'h3 a',
+          '.card__content a'
+        ];
+        
+        for (const linkSelector of linkSelectors) {
+          const link = element.querySelector(linkSelector);
+          if (link && link.href && link.href.includes('/products/')) {
+            productLink = link;
+            productUrl = link.href;
+            break;
+          }
+        }
+      }
+      
+      // Extract product handle from URL
+      const productHandle = productUrl ? 
+        productUrl.split('/products/')[1]?.split('?')[0]?.split('#')[0] : null;
+      
+      // Enhanced title extraction
+      let productTitle = '';
+      const titleSelectors = [
+        '.card__heading a',
+        '.product-title',
+        'h3 a',
+        '.card__content h3 a',
+        '.card__content h3',
+        'h3',
+        '.card__link',
+        'a[href*="/products/"]'
+      ];
+      
+      for (const titleSelector of titleSelectors) {
+        const titleElement = element.querySelector(titleSelector);
+        if (titleElement && titleElement.textContent.trim()) {
+          productTitle = titleElement.textContent.trim();
+          break;
+        }
+      }
+      
+      // Enhanced price extraction
+      let productPrice = '';
+      const priceSelectors = [
+        '.price',
+        '.product-price',
+        '.card__content .price',
+        '.price__regular',
+        '.price__sale',
+        '[class*="price"]'
+      ];
+      
+      for (const priceSelector of priceSelectors) {
+        const priceElement = element.querySelector(priceSelector);
+        if (priceElement && priceElement.textContent.trim()) {
+          productPrice = priceElement.textContent.trim();
+          break;
+        }
+      }
+      
+      const product = {
+        element: element.outerHTML,
+        url: productUrl,
+        href: productUrl,
+        id: productHandle,
+        handle: productHandle,
+        title: productTitle,
+        price: productPrice
+      };
+      
+      // Debug first few products
+      if (index < 3) {
+        console.log(`Product ${index + 1}:`, {
+          url: productUrl,
+          handle: productHandle,
+          title: productTitle.substring(0, 50) + (productTitle.length > 50 ? '...' : ''),
+          price: productPrice
+        });
+      }
+      
+      return product;
+    });
+    
+    // Filter valid products (must have URL and title)
+    const validProducts = products.filter(product => 
+      product.url && 
+      product.url.includes('/products/') && 
+      product.title && 
+      product.title.trim() !== ''
+    );
+    
+    console.log(`Valid products with URLs and titles: ${validProducts.length} out of ${products.length}`);
+    
+    // Check for pagination
+    const paginationSelectors = [
+      '.pagination',
+      '[aria-label*="pagination"]',
+      '.pagination-wrapper',
+      'nav[role="navigation"]'
+    ];
+    
+    let hasPagination = false;
+    for (const paginationSelector of paginationSelectors) {
+      if (doc.querySelector(paginationSelector)) {
+        hasPagination = true;
+        console.log(`Found pagination using selector: ${paginationSelector}`);
+        break;
+      }
+    }
+    
+    console.log(`=== ENHANCED PARSE RESULTS ===`);
     console.log(`Product elements found: ${productElements.length}`);
-    console.log(`Valid products with URLs: ${validProducts.length}`);
+    console.log(`Valid products: ${validProducts.length}`);
     console.log(`Product count: ${productCount}`);
     console.log(`Has pagination: ${hasPagination}`);
     
-    if (validProducts.length > 0) {
-      console.log('Sample product object:', {
-        url: validProducts[0].url,
-        handle: validProducts[0].handle,
-        title: validProducts[0].title.substring(0, 50) + '...'
-      });
+    // CRITICAL: If no valid products found, this is likely a parsing error
+    if (productElements.length > 0 && validProducts.length === 0) {
+      console.error('❌ PARSING ERROR: Found product elements but no valid products');
+      console.error('This suggests the HTML structure is different than expected');
+      
+      // Log the first product element for debugging
+      if (productElements.length > 0) {
+        console.error('First product element HTML:', productElements[0].outerHTML.substring(0, 500));
+      }
     }
     
     return {
       products: validProducts,
-      productCount: productCount,
+      productCount: Math.max(productCount, validProducts.length), // Use the higher number
       hasPagination: hasPagination
     };
   }
@@ -1258,88 +1474,157 @@ class AjaxFilters {
   }
   
   /**
-   * Update page content with merged results from multiple retailers
+   * Update page content with merged results for multi-retailer filtering
    */
   updatePageContentWithMergedResults(combinedProducts, totalProductCount, hasPagination) {
-    console.log('=== UPDATING PAGE WITH MERGED RESULTS ===');
-    console.log('Products to display:', combinedProducts.length);
+    console.log('=== UPDATING PAGE CONTENT WITH MERGED RESULTS ===');
+    console.log('Combined products:', combinedProducts.length);
     console.log('Total count:', totalProductCount);
     
     try {
-      // CRITICAL FIX: Find the correct product grid container (not navigation menu)
-      let productGrid = null;
+      // CRITICAL FIX: AGGRESSIVE cleanup of ALL existing product grids AND pagination
+      console.log('🧹 AGGRESSIVE CLEANUP: Removing ALL existing product grids and pagination...');
       
-      // Try multiple selectors in order of preference for Dawn theme product grids
+      // Strategy 1: Remove existing pagination first
+      const paginationSelectors = [
+        '.pagination',
+        'nav[aria-label*="pagination"]',
+        'nav[aria-label*="Pagination"]',
+        '.pagination-wrapper',
+        'nav[role="navigation"]',
+        '.pagination-nav',
+        '[data-pagination]'
+      ];
+      
+      let removedPaginationCount = 0;
+      paginationSelectors.forEach(selector => {
+        const paginationElements = document.querySelectorAll(selector);
+        paginationElements.forEach(pagination => {
+          console.log(`🗑️ Removing pagination (${selector}):`, pagination.className || pagination.tagName);
+          pagination.remove();
+          removedPaginationCount++;
+        });
+      });
+      
+      console.log(`✅ Removed ${removedPaginationCount} existing pagination elements`);
+      
+      // Strategy 2: Remove by common grid selectors
       const gridSelectors = [
         'ul.product-grid',
         'ul.grid.product-grid', 
-        '#main-collection-product-grid ul.grid',
-        '.collection ul.grid',
-        'ul.grid:not([role="list"])', // Exclude navigation menus
         'ul[class*="product-grid"]',
-        'ul[class*="grid"]:not(.menu-drawer__menu)', // Exclude drawer menus
+        'ul[class*="grid"]:not(.menu-drawer__menu):not([role="list"]):not(.list-menu)',
+        'ul[data-grid="collection"]',
+        'ul.collection__products',
+        'ul.grid.collection__products',
         '.product-grid',
-        '.collection .grid'
+        '[data-grid]'
       ];
       
-      for (const selector of gridSelectors) {
-        const foundGrid = document.querySelector(selector);
-        if (foundGrid) {
-          // Additional validation: make sure this isn't a navigation menu
-          const isNavigationMenu = foundGrid.classList.contains('menu-drawer__menu') || 
-                                 foundGrid.classList.contains('list-menu') ||
-                                 foundGrid.getAttribute('role') === 'list' ||
-                                 foundGrid.closest('nav') ||
-                                 foundGrid.closest('.menu-drawer');
+      let removedGridsCount = 0;
+      gridSelectors.forEach(selector => {
+        const grids = document.querySelectorAll(selector);
+        grids.forEach(grid => {
+          // Enhanced validation: make sure this isn't a navigation menu
+          const isNavigationMenu = grid.classList.contains('menu-drawer__menu') || 
+                                 grid.classList.contains('list-menu') ||
+                                 grid.getAttribute('role') === 'list' ||
+                                 grid.closest('nav') ||
+                                 grid.closest('.menu-drawer') ||
+                                 grid.closest('.header') ||
+                                 grid.closest('.footer') ||
+                                 grid.closest('[aria-label*="menu"]') ||
+                                 grid.closest('[data-menu]');
           
           if (!isNavigationMenu) {
-            productGrid = foundGrid;
-            console.log(`✅ Product grid found with selector: ${selector}`);
-            console.log('Grid element:', foundGrid);
-            console.log('Grid classes:', foundGrid.className);
-            break;
-          } else {
-            console.log(`❌ Skipped navigation menu with selector: ${selector}`);
+            console.log(`🗑️ Removing grid (${selector}):`, grid.className || grid.tagName);
+            grid.remove();
+            removedGridsCount++;
           }
+        });
+      });
+      
+      // Strategy 3: Find and remove any UL elements containing product cards
+      const productContainers = document.querySelectorAll('ul');
+      productContainers.forEach(container => {
+        // Check if this UL contains product cards
+        const hasProductCards = container.querySelector('.card-wrapper, .card, [data-product], .product-item, .grid__item .card-wrapper');
+        const isNavigationMenu = container.classList.contains('menu-drawer__menu') || 
+                               container.classList.contains('list-menu') ||
+                               container.getAttribute('role') === 'list' ||
+                               container.closest('nav') ||
+                               container.closest('.menu-drawer') ||
+                               container.closest('.header') ||
+                               container.closest('.footer');
+        
+        if (hasProductCards && !isNavigationMenu) {
+          console.log('🗑️ Removing UL with product cards:', container.className || 'no-class');
+          container.remove();
+          removedGridsCount++;
+        }
+      });
+      
+      // Strategy 4: Nuclear option - remove any remaining product containers
+      const remainingProductElements = document.querySelectorAll('[data-products-count], .collection__products');
+      remainingProductElements.forEach(element => {
+        console.log('🗑️ Nuclear cleanup - removing product container:', element.className || element.tagName);
+        element.remove();
+        removedGridsCount++;
+      });
+      
+      console.log(`✅ AGGRESSIVE CLEANUP COMPLETE: Removed ${removedGridsCount} existing grids/containers and ${removedPaginationCount} pagination elements`);
+      
+      // ENHANCED: Find the proper container for the new grid
+      let containerElement = null;
+      const containerSelectors = [
+        '#main-collection-product-grid',
+        '.collection',
+        '.collection-content', 
+        'main .shopify-section',
+        '#MainContent',
+        'main',
+        'body'
+      ];
+      
+      for (const selector of containerSelectors) {
+        containerElement = document.querySelector(selector);
+        if (containerElement) {
+          console.log(`✅ Found container with selector: ${selector}`);
+          break;
         }
       }
       
-      // If no proper grid found, create one
-      if (!productGrid) {
-        console.log('❌ No existing product grid found, creating new one...');
-        
-        // Find the main content area to insert the grid
-        const mainContent = document.querySelector('#main-collection-product-grid, .collection, main');
-        if (mainContent) {
-          // Create a new Dawn-style product grid
-          productGrid = document.createElement('ul');
-          productGrid.className = 'product-grid grid product-grid grid--2-col-tablet-down grid--4-col-desktop';
-          productGrid.setAttribute('role', 'list');
-          
-          // Insert after any existing content
-          const existingContent = mainContent.querySelector('.collection__title, .facets, h2');
-          if (existingContent) {
-            existingContent.parentNode.insertBefore(productGrid, existingContent.nextSibling);
-          } else {
-            mainContent.appendChild(productGrid);
-          }
-          
-          console.log('✅ Created new Dawn product grid');
-        } else {
-          console.error('❌ Could not find main content area to create product grid');
-          return;
-        }
+      if (!containerElement) {
+        console.error('❌ Could not find container element for product grid');
+        return;
+      }
+      
+      // CRITICAL: Create a single new Dawn-style product grid
+      console.log('🏗️ Creating new Dawn product grid...');
+      const productGrid = document.createElement('ul');
+      
+      // ENHANCED: Use comprehensive Dawn theme grid classes for perfect layout
+      const dawnGridClasses = 'product-grid grid product-grid grid--2-col-tablet-down grid--4-col-desktop grid--one-third-max grid--quarter-max grid--peek collection__products';
+      productGrid.className = dawnGridClasses;
+      productGrid.setAttribute('role', 'list');
+      productGrid.setAttribute('data-grid', 'collection');
+      productGrid.setAttribute('data-products-count', totalProductCount.toString());
+      productGrid.setAttribute('id', 'ajax-product-grid'); // Unique identifier
+      
+      // CRITICAL: Insert the grid in the correct position within the container
+      const insertionPoint = containerElement.querySelector('.collection__title, .facets, h2, .collection-hero');
+      if (insertionPoint) {
+        // Insert after the title/facets but before any other content
+        insertionPoint.parentNode.insertBefore(productGrid, insertionPoint.nextSibling);
+        console.log('✅ Inserted grid after existing content elements');
+      } else {
+        // Append to the container if no insertion point found
+        containerElement.appendChild(productGrid);
+        console.log('✅ Appended grid to container');
       }
       
       if (combinedProducts.length > 0) {
-        console.log('=== PRESERVING DAWN GRID STRUCTURE ===');
-        console.log('Grid classes before update:', productGrid.className);
-        
-        // Clear existing products while preserving container
-        while (productGrid.firstChild) {
-          productGrid.removeChild(productGrid.firstChild);
-        }
-        console.log('✅ Grid container preserved, children cleared');
+        console.log('=== ADDING PRODUCTS TO DAWN GRID ===');
         
         // Add new products from combined results
         combinedProducts.forEach((product, index) => {
@@ -1347,13 +1632,17 @@ class AjaxFilters {
             // Parse the product HTML and extract the grid item
             const parser = new DOMParser();
             const productDoc = parser.parseFromString(product.element, 'text/html');
-            const gridItem = productDoc.querySelector('li.grid__item, .grid__item, .card-wrapper');
+            const gridItem = productDoc.querySelector('li.grid__item, .grid__item, .card-wrapper, li');
             
             if (gridItem) {
-              // If it's not already a li.grid__item, wrap it
+              // If it's not already a li.grid__item, wrap it properly
               let listItem;
               if (gridItem.tagName === 'LI') {
                 listItem = gridItem.cloneNode(true);
+                // Ensure proper Dawn grid item classes
+                if (!listItem.classList.contains('grid__item')) {
+                  listItem.classList.add('grid__item');
+                }
               } else {
                 listItem = document.createElement('li');
                 listItem.className = 'grid__item';
@@ -1369,19 +1658,10 @@ class AjaxFilters {
           }
         });
         
-        console.log(`✅ Added ${combinedProducts.length} products to Dawn grid structure`);
+        console.log(`✅ Added ${combinedProducts.length} products to new Dawn grid`);
         
-        // Make sure the grid is visible
-        productGrid.style.display = '';
-        productGrid.style.opacity = '1';
-        productGrid.style.visibility = 'visible';
       } else {
-        console.log('No products to display');
-        
-        // Clear the grid but keep the container
-        while (productGrid.firstChild) {
-          productGrid.removeChild(productGrid.firstChild);
-        }
+        console.log('No products to display, adding empty state message');
         
         // Add a "no products found" message
         const noProductsMessage = document.createElement('li');
@@ -1390,10 +1670,68 @@ class AjaxFilters {
         productGrid.appendChild(noProductsMessage);
       }
       
+      // CRITICAL FIX: Handle pagination positioning - add AFTER the product grid
+      if (hasPagination && combinedProducts.length > 0) {
+        console.log('🔗 Adding pagination AFTER product grid...');
+        
+        // Create proper Dawn-style pagination
+        const paginationWrapper = document.createElement('nav');
+        paginationWrapper.className = 'pagination-wrapper';
+        paginationWrapper.setAttribute('aria-label', 'Pagination');
+        paginationWrapper.setAttribute('role', 'navigation');
+        
+        // For multi-retailer filtering, we don't show pagination since we're combining results
+        // But we can add a simple "Load more" indicator if needed
+        const paginationContent = document.createElement('div');
+        paginationContent.className = 'pagination';
+        paginationContent.innerHTML = `
+          <span class="pagination__text">
+            Showing ${combinedProducts.length} products from multiple retailers
+          </span>
+        `;
+        
+        paginationWrapper.appendChild(paginationContent);
+        
+        // Insert pagination AFTER the product grid
+        if (productGrid.parentNode) {
+          productGrid.parentNode.insertBefore(paginationWrapper, productGrid.nextSibling);
+          console.log('✅ Pagination inserted AFTER product grid');
+        } else {
+          containerElement.appendChild(paginationWrapper);
+          console.log('✅ Pagination appended to container after grid');
+        }
+      } else {
+        console.log('ℹ️ No pagination needed for this result set');
+      }
+      
+      // CRITICAL: Ensure proper grid positioning and layout
+      productGrid.style.display = '';
+      productGrid.style.opacity = '1';
+      productGrid.style.visibility = 'visible';
+      productGrid.style.width = '';
+      productGrid.style.maxWidth = '';
+      productGrid.style.margin = '';
+      productGrid.style.padding = '';
+      
+      // ENHANCED: Ensure parent container has proper Dawn classes
+      const parentContainer = productGrid.parentElement;
+      if (parentContainer && !parentContainer.classList.contains('collection')) {
+        const collectionContainer = productGrid.closest('.collection, .page-width, main');
+        if (collectionContainer && !collectionContainer.classList.contains('collection')) {
+          collectionContainer.classList.add('collection');
+          console.log('✅ Added collection class to parent container');
+        }
+      }
+      
+      // CRITICAL: Force DOM reflow to ensure layout is applied
+      productGrid.offsetHeight; // Force reflow
+      
+      console.log('✅ Grid positioning and layout applied');
+      
       // Update product count displays
       this.updateProductCount(totalProductCount);
       
-      console.log('✅ Page content updated with merged results');
+      console.log('✅ SINGLE GRID WITH PROPER PAGINATION: Page content updated with merged results');
       
     } catch (error) {
       console.error('Error updating page content:', error);
@@ -1943,6 +2281,399 @@ class AjaxFilters {
     });
     
     console.log('=== END FORCE CLEANUP ===');
+  }
+
+  /**
+   * Update page content with single filter results showing proper pagination and total count
+   */
+  updatePageContentWithSingleFilterResults(productsToShow, totalCount, totalAvailable, hasPagination) {
+    console.log('=== UPDATING PAGE CONTENT WITH SINGLE FILTER RESULTS ===');
+    console.log('Products to show:', productsToShow.length);
+    console.log('Total count (from Shopify):', totalCount);
+    console.log('Total available (fetched):', totalAvailable);
+    console.log('Has pagination:', hasPagination);
+    
+    try {
+      // ENHANCED CLEANUP: More aggressive cleanup to prevent duplicates
+      console.log('🧹 CLEANUP: Removing existing product grids and pagination...');
+      
+      // Remove ALL existing pagination elements
+      const paginationSelectors = [
+        '.pagination',
+        '.pagination-wrapper', 
+        '.facets__pagination',
+        '.collection__pagination',
+        '[data-pagination]',
+        'nav[role="navigation"]',
+        '.pagination-nav'
+      ];
+      
+      paginationSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+          console.log(`Removing pagination element: ${selector}`);
+          el.remove();
+        });
+      });
+      
+      // CRITICAL FIX: Remove the original Dawn product grid completely
+      const productGridSelectors = [
+        '#main-collection-product-grid ul.grid',
+        '.collection__products',
+        '.product-grid',
+        '.grid--product-grid',
+        '[data-product-grid]',
+        '.collection-product-grid',
+        'ul.product-grid',
+        'ul.grid.product-grid'
+      ];
+      
+      productGridSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+          console.log(`Removing existing product grid: ${selector}`);
+          el.remove();
+        });
+      });
+      
+      // Find the main content container
+      const contentContainer = document.querySelector('#main-collection-product-grid') || 
+                              document.querySelector('.collection') ||
+                              document.querySelector('.main-content') ||
+                              document.querySelector('main');
+      
+      if (!contentContainer) {
+        console.error('Could not find main content container');
+        return;
+      }
+      
+      console.log('Found content container:', contentContainer.className || contentContainer.tagName);
+      
+      // CRITICAL FIX: Create new product grid with proper Dawn theme structure
+      const newProductGrid = document.createElement('ul');
+      newProductGrid.className = 'grid product-grid grid--2-col-tablet grid--4-col-desktop';
+      newProductGrid.id = 'ajax-single-filter-grid';
+      
+      console.log('Creating product grid with', productsToShow.length, 'products');
+      
+      // CRITICAL FIX: Add products to the grid using the correct HTML from product.element
+      productsToShow.forEach((product, index) => {
+        const productElement = document.createElement('li');
+        productElement.className = 'grid__item';
+        
+        // CRITICAL FIX: Use product.element which contains the actual HTML
+        if (product && typeof product === 'object' && product.element) {
+          // Product is an object with element property containing HTML
+          productElement.innerHTML = product.element;
+          console.log(`Added product ${index + 1} from product.element`);
+        } else if (typeof product === 'string') {
+          // Product is already HTML string
+          productElement.innerHTML = product;
+          console.log(`Added product ${index + 1} from string`);
+        } else {
+          console.error(`Product ${index + 1} has unexpected format:`, typeof product, product);
+          // Skip this product
+          return;
+        }
+        
+        newProductGrid.appendChild(productElement);
+      });
+      
+      // Insert the new grid into the content container
+      contentContainer.appendChild(newProductGrid);
+      console.log('✅ New product grid inserted with', newProductGrid.children.length, 'products');
+      
+      // Update the product count display with correct format
+      this.updateSingleFilterProductCount(productsToShow.length, totalCount);
+      
+      // Add pagination if needed
+      if (hasPagination && totalCount > productsToShow.length) {
+        const totalPages = Math.ceil(totalCount / productsToShow.length);
+        this.createSingleFilterPagination(contentContainer, totalAvailable, totalCount);
+        console.log(`Added pagination: ${totalPages} pages`);
+      }
+      
+      // CRITICAL FIX: Apply image standardization to the new products
+      this.applyImageStandardization();
+      
+      console.log('✅ Single filter content updated successfully');
+      
+    } catch (error) {
+      console.error('Error updating single filter content:', error);
+    }
+  }
+
+  /**
+   * Create pagination for single filter results
+   */
+  createSingleFilterPagination(container, totalAvailable, totalCount) {
+    console.log('Creating single filter pagination...', { totalAvailable, totalCount });
+    
+    // Calculate pagination info
+    const itemsPerPage = 16;
+    const totalPages = Math.ceil(totalAvailable / itemsPerPage);
+    const currentPage = 1; // Always start on page 1 for single filter
+    
+    console.log('Pagination calculation:', { totalPages, currentPage, itemsPerPage, totalAvailable });
+    
+    // Only create pagination if there are multiple pages
+    if (totalPages <= 1) {
+      console.log('Only 1 page, skipping pagination creation');
+      return;
+    }
+    
+    // CRITICAL FIX: Find the correct container for pagination insertion
+    // Try multiple selectors to find the product list container
+    let productList = document.querySelector('[data-product-list]');
+    if (!productList) {
+      productList = document.querySelector('.product-grid');
+    }
+    if (!productList) {
+      productList = document.querySelector('.collection-product-list');
+    }
+    if (!productList) {
+      productList = document.querySelector('ul[role="list"]');
+    }
+    if (!productList) {
+      // Try to find any list containing product items
+      productList = document.querySelector('ul.grid, .product-list, .collection-grid');
+    }
+    if (!productList) {
+      // Last resort: find any ul that contains product-related elements
+      const allUls = document.querySelectorAll('ul');
+      for (const ul of allUls) {
+        if (ul.querySelector('[href*="/products/"]') || ul.querySelector('.product-item, .product-card')) {
+          productList = ul;
+          break;
+        }
+      }
+    }
+    
+    if (!productList) {
+      console.error('❌ Pagination container not found');
+      console.log('Available containers:', {
+        'data-product-list': document.querySelectorAll('[data-product-list]').length,
+        'product-grid': document.querySelectorAll('.product-grid').length,
+        'collection-product-list': document.querySelectorAll('.collection-product-list').length,
+        'ul[role="list"]': document.querySelectorAll('ul[role="list"]').length,
+        'all ul elements': document.querySelectorAll('ul').length
+      });
+      return;
+    }
+    
+    console.log('✅ Found product list container:', productList.tagName, productList.className);
+    
+    // Remove any existing pagination first
+    const existingPagination = document.querySelector('.pagination-wrapper, .pagination');
+    if (existingPagination) {
+      existingPagination.remove();
+    }
+    
+    // Create pagination wrapper that matches Dawn theme structure
+    const paginationWrapper = document.createElement('nav');
+    paginationWrapper.setAttribute('role', 'navigation');
+    paginationWrapper.setAttribute('aria-label', 'Pagination');
+    paginationWrapper.className = 'pagination-wrapper';
+    paginationWrapper.style.cssText = 'margin: 2rem 0; text-align: center; border-top: 1px solid #e5e5e5; padding-top: 2rem;';
+    
+    const paginationList = document.createElement('ul');
+    paginationList.className = 'pagination-list';
+    paginationList.style.cssText = 'display: flex; justify-content: center; align-items: center; gap: 0.5rem; list-style: none; margin: 0; padding: 0;';
+    
+    // Add Previous button (disabled for page 1)
+    const prevItem = document.createElement('li');
+    const prevButton = document.createElement('span');
+    prevButton.textContent = 'Previous';
+    prevButton.className = 'pagination-item pagination-prev disabled';
+    prevButton.style.cssText = 'padding: 0.5rem 1rem; border: 1px solid #ddd; background: #f5f5f5; color: #999; border-radius: 4px;';
+    prevItem.appendChild(prevButton);
+    paginationList.appendChild(prevItem);
+    
+    // Add page numbers (show first few pages)
+    for (let i = 1; i <= Math.min(5, totalPages); i++) {
+      const pageItem = document.createElement('li');
+      const pageButton = document.createElement('a');
+      pageButton.href = '#';
+      pageButton.textContent = i;
+      pageButton.className = i === currentPage ? 'pagination-item current' : 'pagination-item';
+      pageButton.style.cssText = i === currentPage 
+        ? 'padding: 0.5rem 1rem; border: 1px solid #333; background: #333; color: white; text-decoration: none; border-radius: 4px; display: block;'
+        : 'padding: 0.5rem 1rem; border: 1px solid #ddd; background: white; color: #333; text-decoration: none; border-radius: 4px; display: block; transition: all 0.2s;';
+      pageButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log(`Page ${i} clicked - functionality to be implemented`);
+      });
+      pageButton.addEventListener('mouseenter', () => {
+        if (i !== currentPage) {
+          pageButton.style.background = '#f0f0f0';
+        }
+      });
+      pageButton.addEventListener('mouseleave', () => {
+        if (i !== currentPage) {
+          pageButton.style.background = 'white';
+        }
+      });
+      pageItem.appendChild(pageButton);
+      paginationList.appendChild(pageItem);
+    }
+    
+    // Add ellipsis if there are more pages
+    if (totalPages > 5) {
+      const ellipsisItem = document.createElement('li');
+      const ellipsisSpan = document.createElement('span');
+      ellipsisSpan.textContent = '...';
+      ellipsisSpan.className = 'pagination-item ellipsis';
+      ellipsisSpan.style.cssText = 'padding: 0.5rem 1rem; color: #666;';
+      ellipsisItem.appendChild(ellipsisSpan);
+      paginationList.appendChild(ellipsisItem);
+      
+      // Add last page
+      const lastPageItem = document.createElement('li');
+      const lastPageButton = document.createElement('a');
+      lastPageButton.href = '#';
+      lastPageButton.textContent = totalPages;
+      lastPageButton.className = 'pagination-item';
+      lastPageButton.style.cssText = 'padding: 0.5rem 1rem; border: 1px solid #ddd; background: white; color: #333; text-decoration: none; border-radius: 4px; display: block; transition: all 0.2s;';
+      lastPageButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log(`Page ${totalPages} clicked - functionality to be implemented`);
+      });
+      lastPageButton.addEventListener('mouseenter', () => {
+        lastPageButton.style.background = '#f0f0f0';
+      });
+      lastPageButton.addEventListener('mouseleave', () => {
+        lastPageButton.style.background = 'white';
+      });
+      lastPageItem.appendChild(lastPageButton);
+      paginationList.appendChild(lastPageItem);
+    }
+    
+    // Add Next button
+    const nextItem = document.createElement('li');
+    const nextButton = document.createElement('a');
+    nextButton.href = '#';
+    nextButton.textContent = 'Next';
+    nextButton.className = 'pagination-item pagination-next';
+    nextButton.style.cssText = 'padding: 0.5rem 1rem; border: 1px solid #333; background: #333; color: white; text-decoration: none; border-radius: 4px; display: block; transition: all 0.2s;';
+    nextButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Next page clicked - functionality to be implemented');
+    });
+    nextButton.addEventListener('mouseenter', () => {
+      nextButton.style.background = '#555';
+    });
+    nextButton.addEventListener('mouseleave', () => {
+      nextButton.style.background = '#333';
+    });
+    nextItem.appendChild(nextButton);
+    paginationList.appendChild(nextItem);
+    
+    paginationWrapper.appendChild(paginationList);
+    
+    // Insert pagination after the product list
+    productList.insertAdjacentElement('afterend', paginationWrapper);
+    
+    console.log('✅ Pagination created and inserted with', totalPages, 'pages');
+  }
+
+  /**
+   * Update product count for single filter to show "X of Y products" format
+   */
+  updateSingleFilterProductCount(displayedCount, totalCount) {
+    console.log('Updating single filter product count:', { displayedCount, totalCount });
+    
+    // CRITICAL FIX: Use multiple selectors to find the status element
+    // Try different approaches to find the status element
+    let statusElement = document.querySelector('status[role="status"]');
+    if (!statusElement) {
+      statusElement = document.querySelector('status');
+    }
+    if (!statusElement) {
+      // Try to find by the text content pattern
+      const allStatusElements = document.querySelectorAll('*');
+      for (const element of allStatusElements) {
+        if (element.textContent && element.textContent.includes('of') && element.textContent.includes('products')) {
+          statusElement = element;
+          break;
+        }
+      }
+    }
+    
+    if (statusElement) {
+      const newText = `${displayedCount} of ${totalCount} products`;
+      statusElement.textContent = newText;
+      console.log('✅ Status element updated:', newText);
+      console.log('✅ Status element found with selector:', statusElement.tagName, statusElement.getAttribute('role'));
+    } else {
+      console.error('❌ Status element not found for count update');
+      // Log all potential status elements for debugging
+      const possibleElements = document.querySelectorAll('status, [role="status"], .product-count, .results-count');
+      console.log('Available status-like elements:', possibleElements);
+    }
+    
+    // Also update any other product count displays that might exist
+    const productCountElements = document.querySelectorAll('[data-product-count], .product-count, .results-count');
+    productCountElements.forEach(element => {
+      element.textContent = `${displayedCount} of ${totalCount} products`;
+    });
+  }
+
+  /**
+   * Generate pagination HTML for single filter results
+   */
+  generatePaginationHtml(currentPage, totalPages) {
+    console.log(`Generating pagination: page ${currentPage} of ${totalPages}`);
+    
+    let paginationHtml = '<nav class="pagination" role="navigation" aria-label="Pagination">';
+    paginationHtml += '<ul class="pagination__list list-unstyled" role="list">';
+    
+    // Previous page
+    if (currentPage > 1) {
+      paginationHtml += `<li><a href="#" class="pagination__item pagination__item--prev" data-page="${currentPage - 1}">Previous</a></li>`;
+    }
+    
+    // Page numbers (show first few, current, and last few)
+    const showPages = [];
+    
+    // Always show first page
+    if (totalPages > 0) showPages.push(1);
+    
+    // Show pages around current page
+    for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+      if (!showPages.includes(i)) showPages.push(i);
+    }
+    
+    // Always show last page
+    if (totalPages > 1 && !showPages.includes(totalPages)) {
+      showPages.push(totalPages);
+    }
+    
+    // Sort and add ellipsis where needed
+    showPages.sort((a, b) => a - b);
+    
+    for (let i = 0; i < showPages.length; i++) {
+      const page = showPages[i];
+      
+      // Add ellipsis if there's a gap
+      if (i > 0 && showPages[i] - showPages[i-1] > 1) {
+        paginationHtml += '<li><span class="pagination__item">…</span></li>';
+      }
+      
+      if (page === currentPage) {
+        paginationHtml += `<li><span class="pagination__item pagination__item--current" aria-current="page">${page}</span></li>`;
+      } else {
+        paginationHtml += `<li><a href="#" class="pagination__item" data-page="${page}">${page}</a></li>`;
+      }
+    }
+    
+    // Next page
+    if (currentPage < totalPages) {
+      paginationHtml += `<li><a href="#" class="pagination__item pagination__item--next" data-page="${currentPage + 1}">Next</a></li>`;
+    }
+    
+    paginationHtml += '</ul></nav>';
+    
+    return paginationHtml;
   }
 }
 
