@@ -396,6 +396,36 @@ newItems.forEach(item => mainContent.appendChild(item.cloneNode(true)));
 
 **Impact**: Issue #2 completely resolved - image standardization now persists across all Ajax operations
 
+### **MCP Browser Automation - Critical Troubleshooting Patterns** 🚨
+
+**Problem Context**: Repeatedly getting stuck in infinite loops during MCP verification testing, causing delays and frustration during critical issue resolution.
+
+**Root Cause Analysis - Why I Keep Getting Stuck with MCP**:
+
+1. **Invalid Tool Calls**: Calling `mcp` instead of the correct `mcp_playwright_browser_snapshot`
+   - **Wrong**: `mcp({"random_string": "test"})`
+   - **Correct**: `mcp_playwright_browser_snapshot({"random_string": "test"})`
+
+2. **Stale Element References**: Using old `ref` IDs after page changes
+   - **Problem**: Page state changes after Ajax requests, making previous `ref` IDs invalid
+   - **Solution**: Take fresh snapshot before each interaction
+
+3. **Timeout Issues**: Not adapting when elements become unclickable
+   - **Problem**: Continuing to retry the same failing click action
+   - **Solution**: Switch to alternative interaction methods or summarize results
+
+4. **Over-reliance on MCP**: Trying to force browser automation when I should summarize results
+   - **Problem**: Spending excessive time on browser automation instead of completing verification
+   - **Solution**: Use successful test results to complete verification reports
+
+**Resolution Pattern**:
+- **Stop After 2 Failed Attempts**: If MCP interactions fail twice, summarize existing results
+- **Fresh Snapshots**: Always take new snapshot after page changes
+- **Correct Tool Names**: Double-check tool names before calling
+- **Result-Focused**: Prioritize completing verification over perfect browser automation
+
+**Success Criteria**: Complete MCP verification efficiently without infinite loops while maintaining thorough testing standards.
+
 ### **Issue #8 Resolution Success Pattern - Rate Limiting and Server Overload** ✅
 
 **Problem Context**: Ajax filtering system was making 100+ parallel requests in seconds, causing 429 rate limiting errors and ultimately leading to development store suspension. The system was fetching up to 50 pages per retailer in parallel, overwhelming Shopify's servers.
