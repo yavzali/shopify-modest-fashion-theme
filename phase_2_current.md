@@ -161,85 +161,36 @@ forceCleanupLoadingStates() {
 
 ---
 
-### **Issue #8: Rate Limiting and Server Overload** ✅ **EMERGENCY STABILIZATION COMPLETE**
-**Status**: EMERGENCY STABILIZATION COMPLETE ✅  
-**Priority**: CRITICAL (was causing server errors and store suspension)  
-**User Impact**: Ajax filtering system was overwhelming the server with too many requests
+### **Issue #8: Rate Limiting and Server Overload** ✅ **MISDIAGNOSED - RATE LIMITING WAS NOT THE CAUSE**
+**Status**: MISDIAGNOSED ⚠️ (Rate limiting fixes implemented but did not solve the website breaking)  
+**Priority**: HIGH (was incorrectly identified as root cause of website breaking)  
+**User Impact**: Initial diagnosis was incorrect - rate limiting was not causing the website to break
 
-**Evidence from Terminal Logs**:
-```
-• 16:14:22 Request » GET 429 /collections/all?filter.p.tag=ASOS&filter.p.tag=Mango 11ms
-• 16:14:22 Request » GET 429 /collections/all?filter.p.tag=ASOS&filter.p.tag=Mango 14ms
-• 16:14:44 Request » GET 429 /collections/all 8ms
-• 16:15:03 Request » GET 429 /collections/all 20ms
-```
+**CORRECTED DIAGNOSIS**:
+The website breaking during multi-retailer filtering was **NOT** caused by rate limiting (429 errors). The real cause was **overly aggressive DOM cleanup** in the `updatePageContentWithMergedResults` method that was destroying critical page elements including navigation menus and main content containers.
 
-**Root Cause Analysis**:
-1. **Aggressive Parallel Requests**: Multi-retailer filtering system fetched multiple retailers in parallel
-2. **No Rate Limiting Protection**: Current system didn't implement request throttling
-3. **Excessive Pagination Requests**: `fetchAllProductsForRetailer` method could make up to 50 requests per retailer
-4. **Server Overwhelm**: 2 retailers × 50 pages = 100+ requests in seconds → Store suspension
+**Evidence of Misdiagnosis**:
+- ✅ Rate limiting fixes were implemented (90% request reduction)
+- ❌ Website still broke when user selected multiple retailers
+- ❌ Filter pills briefly appeared then disappeared (indicating DOM destruction)
+- ❌ Page showed only "6 of 16 products" with no actual products visible
 
-**EMERGENCY STABILIZATION IMPLEMENTED**:
+**Actual Root Cause**: **Issue #3: Grid Layout Collapse** (DOM cleanup too aggressive)
+- **Real Problem**: "Nuclear option" cleanup in lines 1485-1580 of ajax-filters.js
+- **Real Solution**: Surgical DOM cleanup that preserves page structure
+- **Fix Applied**: Replace aggressive cleanup with targeted grid content clearing
 
-**1. Pagination Limits (90% Request Reduction)**:
-```javascript
-// Before: Up to 50 pages per retailer (100+ requests)
-while (hasMorePages && currentPage <= 50)
+**Rate Limiting Improvements (Still Valid)**:
+- ✅ Reduced pagination from 50 to 5 pages per retailer (90% request reduction)
+- ✅ Implemented sequential processing instead of parallel requests  
+- ✅ Added 429 error handling with exponential backoff
+- ✅ Added proper inter-request delays (1s between retailers, 500ms between pages)
 
-// After: Maximum 5 pages per retailer (10 requests max)
-const MAX_PAGES_PER_RETAILER = 5;
-while (hasMorePages && currentPage <= MAX_PAGES_PER_RETAILER)
-```
-
-**2. Sequential Processing (Eliminates Parallel Overload)**:
-```javascript
-// Before: Parallel requests (DANGEROUS)
-const fetchPromises = this.activeFilters.map(async (retailer, index) => {
-
-// After: Sequential processing (SAFE)
-for (let i = 0; i < this.activeFilters.length; i++) {
-  const retailer = this.activeFilters[i];
-  if (i > 0) {
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
-  }
-}
-```
-
-**3. 429 Error Handling with Retry Logic**:
-```javascript
-// New: Exponential backoff for rate limiting
-async fetchWithRetry(url, retryCount = 0) {
-  if (response.status === 429) {
-    const retryAfter = response.headers.get('Retry-After') || Math.pow(2, retryCount + 1);
-    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-    return this.fetchWithRetry(url, retryCount + 1);
-  }
-}
-```
-
-**4. Inter-Page Request Delays**:
-```javascript
-// Add delays between pages of same retailer
-if (hasMorePages && currentPage > 1) {
-  await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
-}
-```
-
-**IMPACT ASSESSMENT**:
-- **Before**: 2 retailers = 100 requests in 10 seconds = **STORE SUSPENSION**  
-- **After**: 2 retailers = 10 requests in 12 seconds = **SAFE OPERATION**  
-- **User Experience**: Still shows 80+ combined products = **EXCELLENT FUNCTIONALITY**  
-- **Functionality Preserved**: All existing features work exactly the same  
-
-**FUNCTIONALITY PRESERVED** ✅:
-- ✅ Multi-retailer OR logic (still works, just safer)
-- ✅ Product deduplication (still combines unique products) 
-- ✅ Dawn architecture preservation (no DOM changes)
-- ✅ Image standardization (still applies after Ajax)
-- ✅ Filter pills and UI (no interface changes)
-- ✅ Mobile functionality (no responsive changes)
-- ✅ URL management (no URL handling changes)
+**Lessons Learned**:
+1. **Correlation ≠ Causation**: 429 errors in logs didn't mean they caused the website breaking
+2. **Test Real Symptoms**: Focus on the actual user experience (website breaking) not just server logs
+3. **Investigate DOM Issues**: When pages break visually, investigate DOM manipulation first
+4. **Sequential Debugging**: Fix one issue at a time and verify each fix independently
 
 **Resolution Date**: January 13, 2025  
 **Technical Implementation**: Emergency stabilization complete, prevents store suspension  
