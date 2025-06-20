@@ -1024,6 +1024,12 @@ class AjaxFilters {
         console.log('=== PRESERVING DAWN GRID STRUCTURE ===');
         console.log('Grid classes before update:', productGrid.className);
         
+        // CRITICAL FIX: Ensure proper Dawn grid classes are maintained
+        if (!productGrid.className.includes('grid product-grid')) {
+          productGrid.className = 'grid product-grid grid--2-col-tablet-down grid--4-col-desktop';
+          console.log('✅ GRID FIX: Applied proper Dawn grid classes to prevent layout collapse');
+        }
+        
         // Clear existing items while preserving the ul.grid container structure
         productGrid.innerHTML = '';
         
