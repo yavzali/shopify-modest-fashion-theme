@@ -170,6 +170,242 @@
 - Loading states work correctly with Dawn's loading system
 - Pagination controls function identically to Dawn's native pagination
 
+### Issue #5: Filter Pill Flicker Investigation and Failed Fix Attempts
+
+### Issue #5 Discovery
+**Issue**: Filter pill briefly disappears then reappears when selecting single retailer
+**Symptom**: Visual flicker but no functionality loss
+**User Report**: "Filter pill flicker on single retailer selection"
+**Priority**: Low (cosmetic issue, no functionality loss)
+
+### Root Cause Analysis
+**Technical Cause**: Dual system conflict between Dawn's native filtering and custom Ajax system
+**Detailed Sequence**:
+1. User clicks single retailer checkbox
+2. Dawn's native system immediately processes the click
+3. Dawn starts its own page reload/Ajax update
+4. Filter pill appears (Dawn's native behavior)
+5. Custom system's setTimeout(50ms) fires
+6. Custom updateUI() method runs and updates filter pills
+7. Custom performAjaxFilter() method runs
+8. DOM replacement occurs, causing pill to disappear momentarily
+9. Dawn's native system completes its update
+10. Filter pill reappears
+
+**Architecture Conflict**: Two systems (Dawn native + Custom Ajax) competing for control of same DOM elements
+
+### Comprehensive Fix Attempts Documentation
+
+#### Attempt #1: Full Debounced Approach (FAILED)
+
+**Strategy**: Replace all immediate execution with 800ms debounced processing to match Dawn's timing
+
+**Implementation**:
+```javascript
+// Added to constructor
+this.debouncedProcessFilters = debounce((checkbox, isRetailerFilter) => {
+  this.processFilterChange(checkbox, isRetailerFilter);
+}, 800);
+
+// Modified handleRetailerFilterChange
+handleRetailerFilterChange(checkbox) {
+  // Update state immediately
+  // Use debounced processing for ALL scenarios
+  this.debouncedProcessFilters(checkbox, true);
+}
+```
+
+**Expected Benefits**:
+- Match Dawn's exact 800ms timing
+- Allow multiple filter selection before processing
+- Eliminate timing conflicts between systems
+
+**Actual Results**:
+- ❌ **First click fails**: Debounce prevents immediate response
+- ❌ **Second click works**: System eventually processes after delay
+- ❌ **Dropdown doesn't close**: Automatic closing logic ineffective
+- ❌ **Flicker returns**: Still conflicts with Dawn's native system
+
+**Failure Analysis**:
+- **Debouncing everything breaks single-retailer UX**: Users expect immediate response
+- **Still interferes with Dawn**: Both systems still try to control same elements
+- **Added complexity without solving root cause**: Timing fix doesn't address dual system conflict
+
+#### Attempt #2: Intelligent Routing with Debounce (FAILED)
+
+**Strategy**: Use intelligent routing - single retailer gets Dawn native handling, multi-retailer gets debounced custom logic
+
+**Implementation**:
+```javascript
+handleRetailerFilterChange(checkbox) {
+  // Update internal state
+  
+  if (this.activeFilters.length <= 1) {
+    // SINGLE RETAILER: Let Dawn handle natively
+    setTimeout(() => {
+      // Close dropdown after Dawn processes
+    }, 900); // 800ms + buffer
+    return; // No interference
+  } else {
+    // MULTI-RETAILER: Use debounced custom logic
+    this.debouncedProcessFilters(checkbox, true);
+  }
+}
+```
+
+**Expected Benefits**:
+- Single retailer: No flicker (Dawn handles natively)
+- Multi-retailer: Proper OR logic with debounced processing
+- Best of both worlds approach
+
+**Actual Results**:
+- ❌ **Multi-retailer filtering broken**: Debounced processing fails to execute
+- ❌ **Cannot deselect filters**: Dropdown interaction broken
+- ❌ **Must use pill X buttons**: Only way to remove filters
+- ❌ **Complex state management**: Routing logic introduces new failure modes
+
+**Failure Analysis**:
+- **Routing complexity**: Decision logic adds failure points
+- **State synchronization issues**: Internal state vs UI state divergence
+- **Event handling conflicts**: Multiple systems still compete for control
+- **Fundamental architecture problem**: Can't cleanly separate single vs multi-retailer in same UI
+
+### Key Lessons Learned
+
+#### Lesson 1: Simple vs Complex Trade-off
+**Stable Version (77f1203)**:
+- 20 lines of simple logic
+- Single event handler
+- Direct execution flow
+- **Result**: Works reliably
+
+**Failed Attempts**:
+- 200+ lines of complex logic
+- Multiple event handlers
+- Conditional routing
+- **Result**: Multiple failure modes
+
+**Insight**: Simple and predictable beats clever and complex
+
+#### Lesson 2: Timing Fixes Don't Solve Architecture Problems
+**Problem**: Dual system conflict (Dawn native + Custom Ajax)
+**Attempted Fix**: Match timing with debouncing
+**Result**: Still conflicts because both systems control same DOM elements
+
+**Insight**: Root cause is architectural, not timing-based
+
+#### Lesson 3: Intelligent Routing Introduces New Failure Modes
+**Problem**: Want different behavior for single vs multi-retailer
+**Attempted Fix**: Route based on filter count
+**Result**: Complex state management and new edge cases
+
+**Insight**: UI should be consistent regardless of internal logic complexity
+
+#### Lesson 4: User Experience Expectations
+**Single Retailer**: Users expect immediate response (like Dawn's native filters)
+**Multi-Retailer**: Users can tolerate slight delay for complex OR logic
+**Debouncing Everything**: Breaks expected immediate response for simple cases
+
+**Insight**: UX patterns should match user mental models
+
+### Strategic Insights for Future Attempts
+
+#### What Doesn't Work
+1. **Full debouncing**: Breaks immediate response expectation
+2. **Intelligent routing**: Adds complexity without solving root cause
+3. **Timing synchronization**: Doesn't address dual system conflicts
+4. **Complex state management**: Creates more failure modes
+
+#### What Might Work
+1. **Accept minor flicker**: Issue #5 is cosmetic, not functional
+2. **Simplify to stable version**: Return to working 77f1203 implementation
+3. **Future enhancement**: Address flicker in dedicated visual polish phase
+4. **Architecture redesign**: If flicker fix is critical, need fundamental redesign
+
+### Investigation Framework Established
+
+**Investigation Tools Created**:
+- `investigation_checklist.md` - Comprehensive diagnostic framework
+- `quick_diagnostic.js` - Browser console test script for rapid diagnosis
+- Systematic comparison between stable (77f1203) vs broken implementations
+
+### Code Archaeology: Stable vs Failed Implementations
+
+#### Stable Implementation (77f1203)
+```javascript
+// Simple event handling
+setupEventListeners() {
+  document.addEventListener('change', (e) => {
+    if (e.target && e.target.name === 'filter.p.tag') {
+      this.handleRetailerFilterChange(e.target);
+    }
+  });
+}
+
+// Direct execution
+handleRetailerFilterChange(checkbox) {
+  // Update state
+  if (checkbox.checked) {
+    this.activeFilters.push(retailerKey);
+  } else {
+    this.activeFilters.splice(index, 1);
+  }
+  
+  // Execute immediately
+  setTimeout(() => {
+    this.updateUI();
+    this.performAjaxFilter();
+  }, 50);
+}
+```
+
+#### Failed Attempts Architecture
+```javascript
+// Complex event handling with multiple listeners
+// Debounced processing with intelligent routing
+// State synchronization across multiple systems
+// Event prevention and form submission management
+// Conditional logic based on filter count
+```
+
+**Comparison**: 
+- **Stable**: 5 key lines of logic
+- **Failed**: 50+ lines of complex logic
+- **Result**: Complexity killed reliability
+
+### Current Decision: Accept Stable Version
+
+**Recommendation**: **Revert to commit 77f1203**
+- ✅ All functionality works correctly
+- ✅ No user experience degradation
+- ✅ Simple and maintainable code
+- ⚠️ Minor cosmetic flicker remains (Issue #5)
+
+**Rationale**: Functional reliability more important than minor cosmetic issue
+
+**Issue #5 Status**: 
+- **Classification**: Cosmetic only (no functionality loss)
+- **Priority**: Low (schedule for future visual polish phase)
+- **Current State**: Documented and understood
+- **Future Resolution**: Requires fundamental architecture redesign if critical
+
+### Next Steps After Revert
+1. **Focus on core functionality**: Grid layout, image standardization, mobile
+2. **Maintain stable foundation**: Build on working 77f1203 implementation
+3. **Document lessons learned**: Apply insights to future development
+4. **Schedule Issue #5 for visual polish**: Address in dedicated cosmetic improvement phase
+
+---
+
+## Stable Version Restored: Commit 77f1203
+
+**Current Status**: Successfully reverted to last stable commit
+**All Functionality**: ✅ Working correctly
+**Issue #5 (Flicker)**: ⚠️ Minor cosmetic issue remains (acceptable)
+**Next Priority**: Focus on remaining core issues
+
+---
+
 ## Systematic Resolution Progress
 
 ### Resolution Order (Dependencies + Dawn Integration Priority)
