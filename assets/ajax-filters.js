@@ -234,6 +234,16 @@ class AjaxFilters {
     }
     
     console.log('Final active filters:', this.activeFilters);
+    
+    // SUB-ISSUE 1.3 FIX: Auto-trigger Ajax filter if we have active filters from URL
+    if (this.activeFilters.length > 0) {
+      console.log('🚀 AUTO-TRIGGERING Ajax filter for URL-loaded filters');
+      // Use setTimeout to ensure DOM is fully ready
+      setTimeout(() => {
+        this.performAjaxFilter();
+      }, 100);
+    }
+    
     console.log('=== END UPDATING FILTER STATE FROM URL ===');
   }
   
@@ -1010,9 +1020,10 @@ class AjaxFilters {
   
   /**
    * Update page content with merged results from multiple retailers
+   * SUB-ISSUE 1.3 FIX: Now uses client-side pagination for merged results
    */
   updatePageContentWithMergedResults(combinedProducts, totalCount, hasPagination) {
-    console.log('=== UPDATING PAGE WITH MERGED RESULTS ===');
+    console.log('=== UPDATING PAGE WITH MERGED RESULTS (WITH PAGINATION) ===');
     console.log('Products to display:', combinedProducts.length);
     console.log('Total count:', totalCount);
     
@@ -1021,21 +1032,17 @@ class AjaxFilters {
       const collectionContainer = document.querySelector('.collection');
       const productGrid = document.querySelector('#product-grid');
       
-      if (productGrid && combinedProducts.length > 0) {
-        
+      if (productGrid) {
         console.log('=== PRESERVING DAWN GRID STRUCTURE ===');
         console.log('Grid classes before update:', productGrid.className);
         
         // CRITICAL FIX 1: Ensure Dawn's page-width container constraint (SUB-ISSUE 1.1 FIX)
-        // SIMPLIFIED LOGIC: Always ensure the collection container has page-width
         if (collectionContainer) {
-          // Always ensure the collection container has page-width
           if (!collectionContainer.classList.contains('page-width')) {
             collectionContainer.classList.add('page-width');
             console.log('✅ SUB-ISSUE 1.1 FIX: Added page-width class to collection container');
           }
           
-          // Also check parent containers for proper page-width structure
           const collectionContent = collectionContainer.parentElement;
           if (collectionContent && !collectionContent.classList.contains('page-width')) {
             collectionContent.classList.add('page-width');
@@ -1049,72 +1056,38 @@ class AjaxFilters {
           console.log('✅ GRID FIX: Applied proper Dawn grid classes to prevent layout collapse');
         }
         
-        // Clear existing items while preserving the ul.grid container structure
-        productGrid.innerHTML = '';
-        
-        // Create proper Dawn grid items from combined products
-        combinedProducts.forEach((product, index) => {
-          if (product && product.element) {
-            // Parse the product HTML to extract the grid item
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = product.element;
-            
-            // Look for existing grid item or create one
-            let gridItem = tempDiv.querySelector('li.grid__item');
-            if (!gridItem) {
-              // Create a proper Dawn grid item structure
-              gridItem = document.createElement('li');
-              gridItem.className = 'grid__item scroll-trigger animate--slide-in';
-              gridItem.setAttribute('data-cascade', '');
-              gridItem.style.setProperty('--animation-order', index + 1);
-              
-              // Move the product content into the grid item
-              const productContent = tempDiv.firstElementChild;
-              if (productContent) {
-                gridItem.appendChild(productContent);
-              }
-            }
-            
-            // CRITICAL: Preserve Dawn's image size standardization
-            // Find all card elements that should have the --ratio-percent property
-            const cardElements = gridItem.querySelectorAll('.card, .card__inner');
-            cardElements.forEach(cardEl => {
-              // Ensure portrait ratio is applied (0.8 ratio = 125% height)
-              if (!cardEl.style.getPropertyValue('--ratio-percent')) {
-                cardEl.style.setProperty('--ratio-percent', '125%');
-                console.log(`Applied portrait ratio to merged product ${index + 1}`);
-              }
-            });
-            
-            // Append the properly structured grid item
-            productGrid.appendChild(gridItem);
-            console.log(`Product ${index + 1}: Added with Dawn grid structure and native sizing`);
+        // SUB-ISSUE 1.3 FIX: Initialize client-side pagination for merged results
+        if (combinedProducts.length > 0) {
+          console.log('=== INITIALIZING CLIENT-SIDE PAGINATION ===');
+          
+          // Initialize or get existing pagination instance
+          if (!this.clientPagination) {
+            this.clientPagination = new window.ClientSidePagination();
           }
-        });
-        
-        console.log('✅ Merged results updated while preserving Dawn architecture');
-        console.log('✅ Dawn grid classes maintained:', productGrid.className);
-        console.log('✅ Dawn native image sizing preserved');
-        
-      } else if (combinedProducts.length === 0) {
-        // No products found - preserve grid structure
-        const productGrid = document.querySelector('#product-grid');
-        if (productGrid) {
+          
+          // Initialize pagination with all products
+          this.clientPagination.initialize(combinedProducts, totalCount);
+          
+          console.log('✅ SUB-ISSUE 1.3 FIX: Client-side pagination initialized');
+          console.log(`✅ Total pages: ${this.clientPagination.getCurrentPageInfo().totalPages}`);
+          
+        } else {
+          // No products found - show empty state
           productGrid.innerHTML = '<li class="grid__item"><p>No products found matching your filters.</p></li>';
+          
+          // Hide pagination for empty results
+          const paginationElement = document.querySelector('.pagination-wrapper');
+          if (paginationElement) {
+            paginationElement.style.display = 'none';
+          }
         }
+        
       } else {
         console.error('Product grid container not found');
       }
       
       // CRITICAL FIX 4: Update product count using Dawn's existing structure
       this.updateProductCountDawnNative(totalCount);
-      
-      // Remove pagination since we're showing all results
-      const paginationElement = document.querySelector('.pagination, nav[aria-label="Pagination"]');
-      if (paginationElement) {
-        paginationElement.style.display = 'none';
-        console.log('Pagination hidden for merged results');
-      }
       
       // CRITICAL FIX 5: Ensure proper Dawn spacing between filter pills and grid
       this.ensureDawnSpacing();
@@ -1125,9 +1098,9 @@ class AjaxFilters {
         this.applyImageStandardization();
       }, 150);
       
-      console.log('Merged results page content updated successfully');
+      console.log('✅ Merged results with pagination updated successfully');
     } catch (error) {
-      console.error('Error updating merged results:', error);
+      console.error('Error updating merged results with pagination:', error);
     }
     
     console.log('=== END UPDATING PAGE WITH MERGED RESULTS ===');
@@ -1311,11 +1284,18 @@ class AjaxFilters {
    * Update page content with filtered results
    */
   updatePageContent(html, productCount, hasPagination) {
-    console.log('=== UPDATING PAGE CONTENT ===');
+    console.log('=== UPDATING PAGE CONTENT (SINGLE RETAILER) ===');
     console.log('Product count:', productCount);
     console.log('Has pagination:', hasPagination);
     
     try {
+      // SUB-ISSUE 1.3 FIX: Cleanup client-side pagination when switching to single retailer
+      if (this.clientPagination) {
+        this.clientPagination.destroy();
+        this.clientPagination = null;
+        console.log('✅ SUB-ISSUE 1.3 FIX: Client-side pagination cleaned up for single retailer');
+      }
+      
       // DAWN ARCHITECTURE PRESERVATION: Find the main product grid container
       const mainContent = document.querySelector('#product-grid');
       if (mainContent && html) {

@@ -103,6 +103,8 @@
       <script src="{{ 'facets.js' | asset_url }}" defer="defer"></script>
       <!-- Phase 2A: Ajax Infrastructure + Retailer Filter -->
       <script src="{{ 'ajax-filters.js' | asset_url }}" defer="defer"></script>
+      <!-- Phase 2B: Client-Side Pagination for Merged Results -->
+      <script src="{{ 'client-side-pagination.js' | asset_url }}" defer="defer"></script>
       {%- if section.settings.enable_filtering or section.settings.enable_sorting -%}
         <aside
           aria-labelledby="verticalTitle"
