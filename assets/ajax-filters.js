@@ -1027,27 +1027,19 @@ class AjaxFilters {
         console.log('Grid classes before update:', productGrid.className);
         
         // CRITICAL FIX 1: Ensure Dawn's page-width container constraint (SUB-ISSUE 1.1 FIX)
-        // LESSON LEARNED: Preserve Dawn's architecture - always ensure page-width constraint
+        // SIMPLIFIED LOGIC: Always ensure the collection container has page-width
         if (collectionContainer) {
-          // First, ensure the collection container itself has page-width if needed
+          // Always ensure the collection container has page-width
           if (!collectionContainer.classList.contains('page-width')) {
             collectionContainer.classList.add('page-width');
             console.log('✅ SUB-ISSUE 1.1 FIX: Added page-width class to collection container');
           }
           
-          // Additionally, check if there's a wrapper that should have page-width
-          const collectionWrapper = collectionContainer.closest('.section-collection-banner, .shopify-section');
-          if (collectionWrapper && !collectionWrapper.querySelector('.page-width')) {
-            // Create a page-width wrapper if the section doesn't have one
-            const pageWidthWrapper = document.createElement('div');
-            pageWidthWrapper.className = 'page-width';
-            
-            // Move the collection content into the page-width wrapper
-            const collectionContent = collectionContainer.parentElement;
-            if (collectionContent && !collectionContent.classList.contains('page-width')) {
-              collectionContent.classList.add('page-width');
-              console.log('✅ SUB-ISSUE 1.1 FIX: Added page-width class to collection content wrapper');
-            }
+          // Also check parent containers for proper page-width structure
+          const collectionContent = collectionContainer.parentElement;
+          if (collectionContent && !collectionContent.classList.contains('page-width')) {
+            collectionContent.classList.add('page-width');
+            console.log('✅ SUB-ISSUE 1.1 FIX: Added page-width class to collection content wrapper');
           }
         }
         

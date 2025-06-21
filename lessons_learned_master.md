@@ -380,6 +380,221 @@ handleRetailerFilterChange(checkbox) {
 
 This recovery demonstrates that **sometimes the best solution is the simplest solution**, and that **removing complexity can be more valuable than adding features**.
 
+### Issue #3 Product Count Styling: Overapplication of Fixes Creates New Problems (2025-01-19)
+
+**Context**: While attempting to fix product count styling issues for multi-retailer scenarios, applied styling fixes too broadly, breaking single-retailer scenarios that were working correctly.
+
+#### What Went Wrong
+
+**Original Problem**: Product count styling was incorrect ONLY during multi-retailer Ajax updates
+- **Single retailer**: Dawn's native system handled styling perfectly ✅
+- **Multi-retailer**: Custom Ajax system needed styling correction ❌
+
+**Incorrect Solution Applied**:
+```javascript
+// PROBLEMATIC: Applied styling fix to ALL multi-retailer scenarios
+fixProductCountStylingOnLoad() {
+  if (retailerTags.length >= 2) {
+    // Applied !important styling overrides to ALL multi-retailer cases
+    // This broke even correctly-working Dawn native scenarios
+  }
+}
+```
+
+**Result**: Broke single-retailer scenarios that were previously working correctly.
+
+#### Root Cause Analysis
+
+**Misunderstanding of When Styling Fix Was Needed**:
+- **Thought**: All multi-retailer scenarios need styling fix
+- **Reality**: Only Ajax-updated product counts need styling fix
+- **Dawn's Native**: Handles multi-retailer page loads correctly
+
+**Overapplication of !important Overrides**:
+- Applied `!important` CSS overrides to elements that were already correctly styled
+- Forced incorrect styling on correctly-functioning Dawn elements
+- Created new problems while trying to solve existing ones
+
+#### Correct Understanding
+
+**When Styling Fix IS Needed**:
+- Multi-retailer Ajax updates (when our custom system updates the DOM)
+- Product count updated via `updateProductCountDawnNative()` method
+
+**When Styling Fix is NOT Needed**:
+- Single retailer scenarios (Dawn handles perfectly)
+- Multi-retailer page loads (Dawn handles correctly)
+- Any scenario where Dawn's native system is in control
+
+#### Lesson Learned: Surgical Precision Over Broad Application
+
+**❌ Wrong Approach**: "If there's a styling problem in scenario X, apply the fix to all scenarios that look like X"
+
+**✅ Correct Approach**: "Apply the fix ONLY when the specific problematic condition occurs"
+
+#### Corrective Action Taken
+
+**Reverted Problematic Changes**:
+1. Removed `fixProductCountStylingOnLoad()` function
+2. Removed `applyProductCountStylingFix()` function  
+3. Restored `updateProductCountDawnNative()` to simple text update only
+4. Eliminated page-load styling interventions
+
+**Result**: Single-retailer scenarios restored to working state.
+
+#### Critical Guidelines for Future Styling Fixes
+
+**Principle 1: Preserve What Works**
+- Never apply fixes to scenarios that are already working correctly
+- Test single-retailer scenarios before and after any multi-retailer fixes
+- **Guideline**: "If it ain't broke, don't fix it"
+
+**Principle 2: Targeted Application**
+- Apply styling fixes only in the exact method/context where they're needed
+- Don't create universal fixes for context-specific problems
+- **Guideline**: Fix the symptom where it occurs, not everywhere it might occur
+
+**Principle 3: Understand Dawn's Boundaries**
+- Learn when Dawn is handling something vs when custom code is handling it
+- Apply fixes only when custom code is responsible for the styling
+- **Guideline**: Let Dawn handle what Dawn does well
+
+**Principle 4: Test All Scenarios**
+- Single retailer, multi-retailer, page loads, Ajax updates
+- Ensure fixes don't break working scenarios
+- **Guideline**: Every fix must be tested against all affected use cases
+
+#### Strategic Implication
+
+**For Issue #3 Specifically**: The real problem may not be styling at all, but rather understanding when Dawn vs custom code is responsible for the product count display. Need to investigate whether the multi-retailer Ajax update is even reaching the product count update method.
+
+**For All Future Fixes**: Understand the exact scope of the problem before applying any solution. Broad fixes for narrow problems create more issues than they solve.
+
+### Issue #3 Product Count Styling: Overapplication of Fixes Creates New Problems (2025-01-19)
+
+**Context**: While attempting to fix product count styling issues for multi-retailer scenarios, applied styling fixes too broadly, breaking single-retailer scenarios that were working correctly.
+
+#### What Went Wrong
+
+**Original Problem**: Product count styling was incorrect ONLY during multi-retailer Ajax updates
+- **Single retailer**: Dawn's native system handled styling perfectly ✅
+- **Multi-retailer**: Custom Ajax system needed styling correction ❌
+
+**Incorrect Solution Applied**:
+```javascript
+// PROBLEMATIC: Applied styling fix to ALL multi-retailer scenarios
+fixProductCountStylingOnLoad() {
+  if (retailerTags.length >= 2) {
+    // Applied !important styling overrides to ALL multi-retailer cases
+    // This broke even correctly-working Dawn native scenarios
+  }
+}
+```
+
+**Result**: Broke single-retailer scenarios that were previously working correctly.
+
+#### Root Cause Analysis
+
+**Misunderstanding of When Styling Fix Was Needed**:
+- **Thought**: All multi-retailer scenarios need styling fix
+- **Reality**: Only Ajax-updated product counts need styling fix
+- **Dawn's Native**: Handles multi-retailer page loads correctly
+
+**Overapplication of !important Overrides**:
+- Applied `!important` CSS overrides to elements that were already correctly styled
+- Forced incorrect styling on correctly-functioning Dawn elements
+- Created new problems while trying to solve existing ones
+
+#### Correct Understanding
+
+**When Styling Fix IS Needed**:
+- Multi-retailer Ajax updates (when our custom system updates the DOM)
+- Product count updated via `updateProductCountDawnNative()` method
+
+**When Styling Fix is NOT Needed**:
+- Single retailer scenarios (Dawn handles perfectly)
+- Multi-retailer page loads (Dawn handles correctly)
+- Any scenario where Dawn's native system is in control
+
+#### Lesson Learned: Surgical Precision Over Broad Application
+
+**❌ Wrong Approach**: "If there's a styling problem in scenario X, apply the fix to all scenarios that look like X"
+
+**✅ Correct Approach**: "Apply the fix ONLY when the specific problematic condition occurs"
+
+#### Corrective Action Taken
+
+**Reverted Problematic Changes**:
+1. Removed `fixProductCountStylingOnLoad()` function
+2. Removed `applyProductCountStylingFix()` function  
+3. Restored `updateProductCountDawnNative()` to simple text update only
+4. Eliminated page-load styling interventions
+
+**Result**: Single-retailer scenarios restored to working state.
+
+#### Critical Guidelines for Future Styling Fixes
+
+**Principle 1: Preserve What Works**
+- Never apply fixes to scenarios that are already working correctly
+- Test single-retailer scenarios before and after any multi-retailer fixes
+- **Guideline**: "If it ain't broke, don't fix it"
+
+**Principle 2: Targeted Application**
+- Apply styling fixes only in the exact method/context where they're needed
+- Don't create universal fixes for context-specific problems
+- **Guideline**: Fix the symptom where it occurs, not everywhere it might occur
+
+**Principle 3: Understand Dawn's Boundaries**
+- Learn when Dawn is handling something vs when custom code is handling it
+- Apply fixes only when custom code is responsible for the styling
+- **Guideline**: Let Dawn handle what Dawn does well
+
+**Principle 4: Test All Scenarios**
+- Single retailer, multi-retailer, page loads, Ajax updates
+- Ensure fixes don't break working scenarios
+- **Guideline**: Every fix must be tested against all affected use cases
+
+#### Strategic Implication
+
+**For Issue #3 Specifically**: The real problem may not be styling at all, but rather understanding when Dawn vs custom code is responsible for the product count display. Need to investigate whether the multi-retailer Ajax update is even reaching the product count update method.
+
+**For All Future Fixes**: Understand the exact scope of the problem before applying any solution. Broad fixes for narrow problems create more issues than they solve.
+
+### Issue #3 Product Count Styling: Overapplication of Fixes Creates New Problems (2025-01-19)
+
+**Context**: While attempting to fix product count styling issues for multi-retailer scenarios, applied styling fixes too broadly, breaking single-retailer scenarios that were working correctly.
+
+#### What Went Wrong
+
+**Original Problem**: Product count styling was incorrect ONLY during multi-retailer Ajax updates
+- **Single retailer**: Dawn's native system handled styling perfectly ✅
+- **Multi-retailer**: Custom Ajax system needed styling correction ❌
+
+**Incorrect Solution Applied**: Applied styling fix to ALL multi-retailer scenarios, breaking even correctly-working Dawn native scenarios.
+
+#### Root Cause Analysis
+
+**Misunderstanding of When Styling Fix Was Needed**:
+- **Thought**: All multi-retailer scenarios need styling fix
+- **Reality**: Only Ajax-updated product counts need styling fix
+- **Dawn's Native**: Handles multi-retailer page loads correctly
+
+#### Lesson Learned: Surgical Precision Over Broad Application
+
+**❌ Wrong Approach**: "If there's a styling problem in scenario X, apply the fix to all scenarios that look like X"
+
+**✅ Correct Approach**: "Apply the fix ONLY when the specific problematic condition occurs"
+
+#### Critical Guidelines for Future Styling Fixes
+
+**Principle 1: Preserve What Works** - Never apply fixes to scenarios that are already working correctly
+
+**Principle 2: Targeted Application** - Apply styling fixes only in the exact method/context where they're needed
+
+**Principle 3: Understand Dawn's Boundaries** - Learn when Dawn vs custom code is responsible for styling
+
+**Principle 4: Test All Scenarios** - Ensure fixes don't break working scenarios
+
 ---
 
 **These lessons learned provide the foundation for systematic, quality-focused development that prioritizes user satisfaction and realistic progress assessment.**

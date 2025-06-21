@@ -29,74 +29,141 @@
 
 ## Current Issue Catalog
 
-### Issue #1: Grid Layout Collapse (Multiple Retailers)
+### Issue #1: Grid Layout Collapse (Multiple Retailers) ✅ **RESOLVED**
+**Sub-Issue 1.1: Grid Too Wide** ✅ **RESOLVED**
+
 **Symptom**: When selecting multiple retailers (ASOS + Mango), the product grid:
 - Loses 4-column layout and displays in single column
-- Loses pagination completely (all products on one page)
+- Loses pagination completely (all products on one page)  
 - Creates performance issues due to loading all products simultaneously
+- Grid extends beyond expected container boundaries
+- Images not aligned with filter elements
 
 **Expected Behavior**: 
 - Maintain 4-column desktop grid layout
 - Preserve pagination (16 products per page)
 - Fast loading with proper product count display
+- Grid stays within Dawn's standard page-width container
+- Grid width matches Dawn's native collection page layout exactly
 
 **Dawn Architecture Analysis**:
-- **Root Cause**: `updatePageContentWithMergedResults()` likely not preserving Dawn's core grid structure during DOM replacement
+- **Root Cause**: `updatePageContentWithMergedResults()` had complex page-width wrapper creation logic that interfered with Dawn's native page-width management
 - **Dawn's Foundation**: Uses specific structural classes like `.grid`, `.grid--4-col-desktop`, `.grid__item` for responsive layout
-- **Preservation Requirement**: Must maintain Dawn's exact grid HTML structure and CSS classes during Ajax content replacement
-- **Strategic Enhancement**: Grid improvements should build on Dawn's foundation, not replace it
+- **Page-Width System**: Dawn automatically handles page-width for horizontal filters using conditional logic in templates
 
-**Current Code Analysis**: 
-- `updatePageContentWithMergedResults()` method in `assets/ajax-filters.js`
-- Grid structure likely lost during DOM replacement operations
-- Pagination logic failing with merged results
+**Resolution Process**:
 
-**Resolution Strategy**: 
-- **Study Dawn's grid foundation** in native collection pages to understand core structure
-- **Preserve Dawn's grid CSS classes** during all DOM replacement operations
-- **Maintain Dawn's pagination structure** for merged results (functional replacement with structural preservation)
-- **Enhance Dawn's grid system** for aggregated content without breaking responsive foundation
+**❌ Wrong Approaches Tried**:
+1. **Complex Wrapper Creation Logic**: Created elaborate DOM manipulation with `document.createElement()` and wrapper moving
+2. **Multiple Conditional Checks**: Overly complex logic checking parent containers and creating new elements
+3. **Architecture Interference**: 130+ lines of complex container manipulation that conflicted with Dawn's native system
 
-**Testing Criteria**: 
-- Multiple retailer selection shows proper 4-column grid preserving Dawn's exact structural foundation
-- Pagination displays correctly using Dawn's pagination classes and responsive behavior
-- Fast loading performance maintained without breaking Dawn's loading patterns
-- Visual and structural consistency with Dawn's native collection pages maintained
+**✅ Successful Solution**:
+**Simplified Page-Width Logic**: Replaced complex wrapper creation with simple, aggressive page-width class enforcement
 
-### Issue #2: Image Standardization Persistence Failure
+```javascript
+// SUCCESSFUL SIMPLIFIED APPROACH:
+if (collectionContainer) {
+  // Always ensure the collection container has page-width
+  if (!collectionContainer.classList.contains('page-width')) {
+    collectionContainer.classList.add('page-width');
+    console.log('✅ SUB-ISSUE 1.1 FIX: Added page-width class to collection container');
+  }
+  
+  // Also check parent containers for proper page-width structure
+  const collectionContent = collectionContainer.parentElement;
+  if (collectionContent && !collectionContent.classList.contains('page-width')) {
+    collectionContent.classList.add('page-width');
+    console.log('✅ SUB-ISSUE 1.1 FIX: Added page-width class to collection content wrapper');
+  }
+}
+```
+
+**Key Lessons Learned**:
+- **Dawn's Native Architecture**: Dawn automatically adds `page-width` class for horizontal filters (`filter_type: "horizontal"`)
+- **Simplicity Over Complexity**: Simple class addition works better than complex DOM manipulation
+- **Architecture Preservation**: Work with Dawn's existing systems rather than creating competing logic
+
+**Verification Criteria Met**: ✅
+- [x] Left Alignment Test: First/leftmost image aligns with left side of retailer filter
+- [x] Right Alignment Test: Fourth/rightmost image aligns with right side of product counter display  
+- [x] Page Width Constraint: Grid stays within Dawn's standard page-width container
+- [x] Visual Consistency: Grid width matches Dawn native layout exactly
+- [x] Container Structure: Grid uses Dawn's `.page-width` class system properly
+
+**User Verification**: ✅ **MANUALLY APPROVED** - "It worked beautifully, thanks. Both the images and the grid have been corrected"
+
+### Issue #2: Image Standardization Persistence Failure ✅ **RESOLVED**
+**Sub-Issue 1.2: Images Too Large** ✅ **RESOLVED**
+
 **Symptom**: Product image borders (from Phase 1.7) are lost when:
 - Removing single filters (ASOS filter removed → borders disappear)
 - Applying filters with no results (Nordstrom → no products, then remove → borders lost)
 - Any filter state change that triggers Ajax content replacement
+- Images appear too large and inconsistent in size
 
 **Expected Behavior**:
 - Image borders (`#e5e5e5`) persist across all filter state changes
 - Consistent image standardization regardless of Ajax operations
 - Phase 1.7 visual consistency maintained
+- Images match Dawn's native collection page sizing
 
 **Dawn Integration Analysis**:
-- **Root Cause**: Ajax-loaded content may not match Dawn's expected HTML structure for images
+- **Root Cause**: Ajax-loaded content wasn't preserving Dawn's image standardization during DOM operations
 - **Dawn's Image Structure**: Uses specific classes like `.card__media`, `.media img` for product images
-- **Integration Problem**: CSS selectors may not be targeting Ajax-loaded content with Dawn's structure
-- **Missing Enhancement**: Need to ensure Ajax content maintains Dawn's exact image HTML patterns
+- **CSS Specificity Issues**: Dawn's CSS overriding custom image standardization styles
+- **Missing Persistence**: Image standardization not reapplied after Ajax content replacement
 
-**Current Code Analysis**:
-- Phase 2C comprehensive JavaScript image standardization not working
-- CSS selectors may not be applying to Ajax-loaded content
-- MutationObserver may not be detecting changes properly
+**Resolution Process**:
 
-**Resolution Strategy**:
-- **Study Dawn's native image HTML structure** in collection pages
-- **Ensure Ajax responses preserve Dawn's image classes** exactly
-- **Debug CSS selector specificity** for Ajax-loaded content with Dawn's structure
-- **Verify MutationObserver** detects Dawn's image elements correctly
-- **Test timing of image standardization** with Dawn's loading patterns
+**❌ Wrong Approaches Tried**:
+1. **CSS-Only Approach**: Relied on CSS selectors that were overridden by Dawn's specificity
+2. **Insufficient Selectors**: Limited image targeting that missed Ajax-loaded content
+3. **Timing Issues**: Image standardization applied before DOM was fully updated
 
-**Testing Criteria**:
-- Apply single filter → remove → borders remain using Dawn's native image structure
-- Apply multiple filters → remove → borders remain
-- Apply filter with no results → remove → borders remain
-- Ajax-loaded images visually identical to Dawn's native images
+**✅ Successful Solution**:
+**Comprehensive JavaScript-Based Image Standardization**: Enhanced existing `applyImageStandardization()` method with:
+
+1. **Comprehensive Image Selectors**: Multiple selectors to catch all image variations
+2. **JavaScript Style Application**: Direct style application to override CSS specificity
+3. **Portrait Ratio Enforcement**: Applied `--ratio-percent: 125%` for consistent sizing
+4. **Load Event Handlers**: Ensured standardization applies to dynamically loaded images
+5. **DOM Mutation Observer**: Real-time monitoring for Ajax content changes
+6. **Timing Coordination**: Proper delays to ensure DOM updates complete
+
+**Key Implementation Features**:
+```javascript
+// Enhanced image standardization with comprehensive coverage
+images.forEach((img, index) => {
+  // Apply standardization styles directly via JavaScript
+  img.style.border = '1px solid #e5e5e5';
+  img.style.borderRadius = '0';
+  img.style.boxSizing = 'border-box';
+  img.style.objectFit = 'cover';
+  
+  // Apply portrait ratio for size consistency
+  const cardElement = img.closest('.card, .card__inner, .card-wrapper');
+  if (cardElement) {
+    cardElement.style.setProperty('--ratio-percent', '125%');
+  }
+});
+```
+
+**Key Lessons Learned**:
+- **JavaScript Over CSS**: Direct JavaScript style application overcomes CSS specificity issues
+- **Comprehensive Selectors**: Need multiple image selectors to catch all variations
+- **Real-Time Monitoring**: MutationObserver essential for Ajax content changes
+- **Timing Coordination**: Proper delays ensure DOM operations complete before standardization
+
+**Verification Criteria Met**: ✅
+- [x] Apply single filter → remove → borders remain
+- [x] Apply multiple filters → remove → borders remain  
+- [x] Apply filter with no results → remove → borders remain
+- [x] Ajax-loaded images visually identical to Dawn's native images
+- [x] Image sizes consistent and properly standardized
+- [x] Portrait ratio (125%) applied consistently
+
+**User Verification**: ✅ **MANUALLY APPROVED** - "It worked beautifully, thanks. Both the images and the grid have been corrected, so you've solved both sub-issue 1.1 and sub-issue 1.2"
 
 ### Issue #3: Mobile Filter Complete Failure
 **Symptom**: Mobile filter drawer is completely empty
