@@ -1017,14 +1017,41 @@ class AjaxFilters {
     console.log('Total count:', totalCount);
     
     try {
-      // DAWN ARCHITECTURE PRESERVATION: Find the main product grid container
+      // DAWN ARCHITECTURE PRESERVATION: Find Dawn's collection container structure
+      const collectionContainer = document.querySelector('.collection');
       const productGrid = document.querySelector('#product-grid');
+      
       if (productGrid && combinedProducts.length > 0) {
         
         console.log('=== PRESERVING DAWN GRID STRUCTURE ===');
         console.log('Grid classes before update:', productGrid.className);
         
-        // CRITICAL FIX: Ensure proper Dawn grid classes are maintained
+        // CRITICAL FIX 1: Ensure Dawn's page-width container constraint (SUB-ISSUE 1.1 FIX)
+        // LESSON LEARNED: Preserve Dawn's architecture - always ensure page-width constraint
+        if (collectionContainer) {
+          // First, ensure the collection container itself has page-width if needed
+          if (!collectionContainer.classList.contains('page-width')) {
+            collectionContainer.classList.add('page-width');
+            console.log('✅ SUB-ISSUE 1.1 FIX: Added page-width class to collection container');
+          }
+          
+          // Additionally, check if there's a wrapper that should have page-width
+          const collectionWrapper = collectionContainer.closest('.section-collection-banner, .shopify-section');
+          if (collectionWrapper && !collectionWrapper.querySelector('.page-width')) {
+            // Create a page-width wrapper if the section doesn't have one
+            const pageWidthWrapper = document.createElement('div');
+            pageWidthWrapper.className = 'page-width';
+            
+            // Move the collection content into the page-width wrapper
+            const collectionContent = collectionContainer.parentElement;
+            if (collectionContent && !collectionContent.classList.contains('page-width')) {
+              collectionContent.classList.add('page-width');
+              console.log('✅ SUB-ISSUE 1.1 FIX: Added page-width class to collection content wrapper');
+            }
+          }
+        }
+        
+        // CRITICAL FIX 2: Ensure proper Dawn grid classes are maintained
         if (!productGrid.className.includes('grid product-grid')) {
           productGrid.className = 'grid product-grid grid--2-col-tablet-down grid--4-col-desktop';
           console.log('✅ GRID FIX: Applied proper Dawn grid classes to prevent layout collapse');
@@ -1069,13 +1096,13 @@ class AjaxFilters {
             
             // Append the properly structured grid item
             productGrid.appendChild(gridItem);
-            console.log(`Product ${index + 1}: Added with Dawn grid structure and size standardization`);
+            console.log(`Product ${index + 1}: Added with Dawn grid structure and native sizing`);
           }
         });
         
         console.log('✅ Merged results updated while preserving Dawn architecture');
         console.log('✅ Dawn grid classes maintained:', productGrid.className);
-        console.log('✅ Image size standardization preserved for all merged products');
+        console.log('✅ Dawn native image sizing preserved');
         
       } else if (combinedProducts.length === 0) {
         // No products found - preserve grid structure
@@ -1087,8 +1114,8 @@ class AjaxFilters {
         console.error('Product grid container not found');
       }
       
-      // Update product count displays with the TOTAL count from all retailers
-      this.updateProductCount(totalCount);
+      // CRITICAL FIX 4: Update product count using Dawn's existing structure
+      this.updateProductCountDawnNative(totalCount);
       
       // Remove pagination since we're showing all results
       const paginationElement = document.querySelector('.pagination, nav[aria-label="Pagination"]');
@@ -1096,6 +1123,9 @@ class AjaxFilters {
         paginationElement.style.display = 'none';
         console.log('Pagination hidden for merged results');
       }
+      
+      // CRITICAL FIX 5: Ensure proper Dawn spacing between filter pills and grid
+      this.ensureDawnSpacing();
       
       // Apply comprehensive image standardization after content update
       // Delay to ensure DOM is fully updated with preserved structure
@@ -1112,7 +1142,58 @@ class AjaxFilters {
   }
 
   /**
-   * Update product count displays
+   * Update product count using Dawn's native structure (DAWN ARCHITECTURE PRESERVATION)
+   */
+  updateProductCountDawnNative(count) {
+    console.log('=== UPDATING PRODUCT COUNT USING DAWN NATIVE STRUCTURE ===');
+    console.log('Product count:', count + ' products');
+    
+    // DAWN PRESERVATION: Target the exact element that aligns with Sort by dropdown
+    // This is the horizontal layout product count that sits in the same row as the sort dropdown
+    const productCountSpan = document.querySelector('#ProductCountDesktop');
+    if (productCountSpan) {
+      productCountSpan.textContent = `${count} products`;
+      console.log('✅ Dawn native product count updated (horizontal layout):', count + ' products');
+      return;
+    }
+    
+    // Fallback: Look for the product count text container
+    const productCountText = document.querySelector('.product-count .product-count__text');
+    if (productCountText) {
+      // Update the span inside the text container
+      let span = productCountText.querySelector('span');
+      if (!span) {
+        span = document.createElement('span');
+        span.id = 'ProductCountDesktop';
+        productCountText.appendChild(span);
+      }
+      span.textContent = `${count} products`;
+      
+      // Apply Dawn styling to the h2 element
+      productCountText.style.fontSize = '1.4rem';
+      productCountText.style.lineHeight = 'calc(1 + 0.5 / var(--font-body-scale))';
+      productCountText.style.margin = '0';
+      
+      console.log('✅ Dawn native product count updated (created span with styling):', count + ' products');
+      return;
+    }
+    
+    // Additional fallback: Look for vertical layout product count
+    const productCountVertical = document.querySelector('.product-count-vertical .product-count__text #ProductCountDesktop');
+    if (productCountVertical) {
+      productCountVertical.textContent = `${count} products`;
+      console.log('✅ Dawn native product count updated (vertical layout):', count + ' products');
+      return;
+    }
+    
+    console.log('⚠️ No Dawn product count element found, using generic update');
+    this.updateProductCount(count);
+    
+    console.log('=== END UPDATING PRODUCT COUNT ===');
+  }
+
+  /**
+   * Update product count displays (LEGACY - for fallback only)
    */
   updateProductCount(count) {
     console.log('Product count updated:', count + ' products');
@@ -1445,6 +1526,48 @@ class AjaxFilters {
     }
     
     console.log('=== END APPLYING IMAGE STANDARDIZATION ===');
+  }
+
+  /**
+   * Ensure proper Dawn spacing between filter pills and product grid (DAWN ARCHITECTURE PRESERVATION)
+   */
+  ensureDawnSpacing() {
+    console.log('=== ENSURING DAWN SPACING STRUCTURE ===');
+    
+    try {
+      // Find Dawn's active facets container and product grid container
+      const activeFacets = document.querySelector('.active-facets');
+      const productGridContainer = document.querySelector('.product-grid-container, #ProductGridContainer');
+      
+      if (activeFacets && productGridContainer) {
+        // Ensure Dawn's native margin-bottom is preserved on active facets
+        // Dawn typically uses 1.5rem to 2rem spacing between facets and grid
+        if (!activeFacets.style.marginBottom) {
+          activeFacets.style.marginBottom = '2rem';
+          console.log('✅ SPACING FIX: Applied Dawn native spacing below filter pills');
+        }
+        
+        // Ensure the product grid container has proper top spacing
+        if (!productGridContainer.style.marginTop) {
+          productGridContainer.style.marginTop = '1rem';
+          console.log('✅ SPACING FIX: Applied Dawn native spacing above product grid');
+        }
+      } else {
+        console.log('⚠️ Dawn spacing elements not found - using fallback spacing');
+        
+        // Fallback: Apply spacing to the product grid directly
+        const productGrid = document.querySelector('#product-grid');
+        if (productGrid && !productGrid.style.marginTop) {
+          productGrid.style.marginTop = '2rem';
+          console.log('✅ SPACING FIX: Applied fallback spacing to product grid');
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error ensuring Dawn spacing:', error);
+    }
+    
+    console.log('=== END ENSURING DAWN SPACING ===');
   }
   
   /**
