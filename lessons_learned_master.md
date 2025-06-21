@@ -198,6 +198,90 @@
 - **Data Structures**: Start simple (arrays) before adding complexity (Maps, objects)
 - **Error Handling**: Comprehensive logging and fallback behavior essential
 - **Cross-Device Compatibility**: Desktop and mobile require different event handling approaches
+
+### Pagination Architecture Investigation Lessons (Sub-Issue 1.3)
+
+#### **Root Cause Analysis: Architectural Design vs Implementation Bug**
+**Initial Wrong Focus**: Assumed pagination loss was a technical implementation bug in Ajax filtering
+- Investigated Ajax response parsing missing pagination data
+- Analyzed `parseFilterResponse()` method for pagination element extraction issues
+- Compared `updatePageContent()` vs `updatePageContentWithMergedResults()` differences
+- Focused on missing pagination HTML structure preservation during DOM updates
+
+**Actual Root Cause**: Pagination loss was **intentional by design** in the multi-retailer architecture
+- Single retailer: Uses Dawn's native pagination (fetches 16 products per page)
+- Multiple retailers: Intentionally fetches ALL products and displays ALL at once
+- Explicitly hides pagination with `display: 'none'` for merged results
+
+**Learning**: **Distinguish between implementation bugs and architectural design decisions**
+
+#### **Architecture Analysis: Single vs Multi-Retailer Patterns**
+**Single Retailer Pattern (Working)**:
+```javascript
+// Fetches ONE PAGE only (16 products)
+const response = await this.fetchFilteredProducts(retailer);
+// Preserves Dawn's native pagination HTML
+this.updatePageContent(result.html, result.productCount, result.hasPagination);
+```
+
+**Multi-Retailer Pattern (Broken by Design)**:
+```javascript
+// Fetches ALL PAGES for each retailer
+const allProducts = await this.fetchAllProductsForRetailer(retailer);
+// Combines ALL products into one giant array
+this.updatePageContentWithMergedResults(combinedProducts, totalProductCount, false);
+// EXPLICITLY HIDES PAGINATION
+paginationElement.style.display = 'none';
+```
+
+**Learning**: **Study existing patterns before assuming bugs - understand the architectural intent**
+
+#### **Solution Strategy: Client-Side Pagination for Merged Results**
+**Problem**: OR logic requires fetching all products, but displaying all at once creates poor UX
+**Solution**: Keep OR logic data fetching, add client-side pagination for display
+
+**Key Implementation Insights**:
+1. **Data vs Display Separation**: Fetch all products for OR logic, paginate display for UX
+2. **Dawn Structure Preservation**: Use Dawn's exact pagination HTML structure and CSS classes
+3. **State Management**: Track current page, total pages, products per page
+4. **Event Handling**: Implement page navigation with proper event delegation
+5. **Integration**: Maintain existing fixes (grid layout, image standardization)
+
+**Learning**: **Complex data requirements don't require complex UX - separate concerns**
+
+#### **Critical Bug Pattern: Display Count vs Actual Count**
+**Bug Discovery**: Last page showed no products, middle pages had issues
+**Root Cause**: Pagination calculated on display count (559) but actual unique products (273)
+```javascript
+// BUGGY CODE:
+this.totalPages = Math.ceil(this.totalProducts / this.productsPerPage);
+// totalProducts = 559 (display count), but allProducts.length = 273 (actual)
+
+// FIXED CODE:
+this.totalPages = Math.ceil(this.allProducts.length / this.productsPerPage);
+// Base pagination on actual unique products, not display count
+```
+
+**Learning**: **Always base calculations on actual data, not display representations**
+
+#### **Universal Compatibility Design**
+**Challenge**: Solution must work for any retailer combination
+**Implementation**: 
+- Gracefully handles invalid retailers (ignores non-existent ones)
+- Works for 2, 3, or more retailers
+- Robust error handling for edge cases
+- Consistent behavior regardless of combination
+
+**Learning**: **Design for universality from the start - test edge cases systematically**
+
+#### **Dawn Integration Preservation**
+**Success Factors**:
+- Used Dawn's exact pagination HTML structure (`pagination-wrapper`, `pagination`, `pagination__list`)
+- Maintained Dawn's CSS classes for automatic styling compatibility
+- Preserved existing fixes from Sub-Issues 1.1 and 1.2
+- Implemented proper event delegation for Dawn's structure
+
+**Learning**: **When adding new functionality, preserve all existing architectural wins**
 - **Performance**: Minimize DOM queries, cache selectors, use efficient event delegation
 
 ### Strategic Development Insights
